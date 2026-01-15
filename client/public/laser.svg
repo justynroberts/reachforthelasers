@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Laser beam -->
+  <path d="M32 4 L36 48 L32 56 L28 48 Z" fill="url(#laserGradient)" opacity="0.9"/>
+  <!-- Glow effect -->
+  <ellipse cx="32" cy="52" rx="8" ry="4" fill="#00d4ff" opacity="0.5"/>
+  <ellipse cx="32" cy="52" rx="4" ry="2" fill="#ffffff" opacity="0.8"/>
+  <!-- Beam core -->
+  <path d="M31 8 L33 8 L34 48 L32 54 L30 48 Z" fill="#ffffff"/>
+  <!-- Top glow -->
+  <circle cx="32" cy="6" r="4" fill="#00d4ff" opacity="0.6"/>
+  <circle cx="32" cy="6" r="2" fill="#ffffff" opacity="0.9"/>
+  <!-- Gradient definitions -->
+  <defs>
+    <linearGradient id="laserGradient" x1="32" y1="4" x2="32" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="50%" stop-color="#00aaff"/>
+      <stop offset="100%" stop-color="#ff00aa"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --grid-cell-size: 24px;
+  --grid-header-height: 32px;
+
+  /* Dark theme (default) */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #2d2d44;
+  --text-primary: #e0e0e0;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-color: #1a1a2e;
+  --note-active: #00d4ff;
+  --note-accent: #ff00aa;
+  --playhead: #ffff00;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #e9ecef;
+  --bg-tertiary: #dee2e6;
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-muted: #6c757d;
+  --border-color: #dee2e6;
+  --note-active: #0077b6;
+  --note-accent: #d63384;
+  --playhead: #ffc107;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Grid selection */
+.grid-cell {
+  transition: background-color 0.05s ease;
+}
+
+.grid-cell:hover {
+  background-color: rgba(0, 212, 255, 0.1);
+}
+
+.grid-cell.active {
+  background-color: var(--note-active);
+}
+
+.grid-cell.accent {
+  background-color: var(--note-accent);
+}
+
+/* Playhead animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.playhead {
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+/* Theme-aware utility classes */
+.bg-app {
+  background-color: var(--bg-primary);
+}
+
+.bg-panel {
+  background-color: var(--bg-secondary);
+}
+
+.bg-control {
+  background-color: var(--bg-tertiary);
+}
+
+.text-app {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.border-app {
+  border-color: var(--border-color);
+}

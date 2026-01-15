@@ -1,0 +1,30 @@
+{
+  "name": "reach-for-the-lasers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser-based trance lead pattern generator",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build:shared && npm run build:client && npm run build:server",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run build -w server",
+    "build:shared": "npm run build -w shared",
+    "test": "npm run test:client && npm run test:server",
+    "test:client": "npm test -w client",
+    "test:server": "npm test -w server",
+    "lint": "npm run lint -w client && npm run lint -w server",
+    "lint:fix": "npm run lint:fix -w client && npm run lint:fix -w server",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
