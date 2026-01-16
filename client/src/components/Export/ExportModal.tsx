@@ -25,6 +25,8 @@ interface ExportModalProps {
   rootNote: number
   tempo: number
   soundSettings: SoundSettings
+  loopStart: number
+  loopEnd: number
   onClose: () => void
 }
 
@@ -41,6 +43,8 @@ export interface SavedPattern {
   rootNote: number
   tempo: number
   soundSettings?: SoundSettings
+  loopStart?: number
+  loopEnd?: number
   createdAt: string
 }
 
@@ -57,13 +61,14 @@ export function ExportModal({
   rootNote,
   tempo,
   soundSettings,
+  loopStart,
+  loopEnd,
   onClose
 }: ExportModalProps) {
   const [channel, setChannel] = useState(1)
   const [velocityCurve, setVelocityCurve] = useState<VelocityCurve>('as-is')
   const [includeTempo, setIncludeTempo] = useState(true)
   const [noteLength, setNoteLength] = useState<NoteLengthOption>('as-programmed')
-  const [saveToCatalog, setSaveToCatalog] = useState(true)
   const [patternName, setPatternName] = useState('')
 
   const handleExport = () => {
@@ -130,19 +135,19 @@ export function ExportModal({
     a.click()
     URL.revokeObjectURL(url)
 
-    // Save to catalog if enabled
-    if (saveToCatalog && patternName.trim()) {
-      savePatternToCatalog({
-        id: `user-${Date.now()}`,
-        name: patternName.trim(),
-        notes: pattern.notes,
-        scale,
-        rootNote,
-        tempo,
-        soundSettings,
-        createdAt: new Date().toISOString()
-      })
-    }
+    // Always save to catalog - everybody shares
+    savePatternToCatalog({
+      id: `user-${Date.now()}`,
+      name: patternName.trim(),
+      notes: pattern.notes,
+      scale,
+      rootNote,
+      tempo,
+      soundSettings,
+      loopStart,
+      loopEnd,
+      createdAt: new Date().toISOString()
+    })
 
     onClose()
   }
@@ -228,29 +233,21 @@ export function ExportModal({
             </label>
           </div>
 
-          {/* Save to Catalog */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="saveToCatalog"
-                checked={saveToCatalog}
-                onChange={e => setSaveToCatalog(e.target.checked)}
-                className="rounded border-grid-bar bg-grid-line"
-              />
-              <label htmlFor="saveToCatalog" className="text-sm text-gray-400">
-                Save to catalog
-              </label>
-            </div>
-            {saveToCatalog && (
-              <input
-                type="text"
-                value={patternName}
-                onChange={e => setPatternName(e.target.value)}
-                placeholder="Pattern name..."
-                className="w-full px-3 py-2 bg-grid-line border border-grid-bar rounded text-sm"
-              />
-            )}
+          {/* Pattern Name - required for catalog */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">
+              Pattern Name <span className="text-note-active">*</span>
+            </label>
+            <input
+              type="text"
+              value={patternName}
+              onChange={e => setPatternName(e.target.value)}
+              placeholder="Name your pattern..."
+              className="w-full px-3 py-2 bg-grid-line border border-grid-bar rounded text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              All patterns are shared with the community
+            </p>
           </div>
 
           {/* Preview info */}
@@ -283,10 +280,10 @@ export function ExportModal({
           </button>
           <button
             onClick={handleExport}
-            disabled={pattern.notes.length === 0}
+            disabled={pattern.notes.length === 0 || !patternName.trim()}
             className="px-4 py-2 bg-note-active text-grid-bg rounded hover:opacity-90 disabled:opacity-50"
           >
-            Download MIDI
+            Export & Share
           </button>
         </div>
       </div>

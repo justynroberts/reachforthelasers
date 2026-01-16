@@ -55,18 +55,19 @@ export function Visualizer({ isPlaying }: VisualizerProps) {
         const x = i * barWidth
         const y = height - barHeight
 
-        // Gradient from cyan to magenta based on frequency
-        const hue = 180 + (i / barCount) * 60
-        ctx.fillStyle = `hsla(${hue}, 100%, 60%, 0.8)`
+        // CRT phosphor green theme - slight hue variation for depth
+        const hue = 120 + (i / barCount) * 20 - 10 // Green range: 110-130
+        const lightness = 50 + (normalized * 15) // Brighter when louder
+        ctx.fillStyle = `hsla(${hue}, 100%, ${lightness}%, 0.85)`
 
         // Draw bar with rounded top
         ctx.beginPath()
         ctx.roundRect(x + gap / 2, y, barWidth - gap, barHeight, 2)
         ctx.fill()
 
-        // Glow effect
-        ctx.shadowColor = `hsla(${hue}, 100%, 60%, 0.5)`
-        ctx.shadowBlur = 8
+        // CRT glow effect
+        ctx.shadowColor = '#33ff33'
+        ctx.shadowBlur = 12
       }
 
       ctx.shadowBlur = 0

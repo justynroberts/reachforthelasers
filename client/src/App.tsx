@@ -26,7 +26,7 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false)
   const [showTour, setShowTour] = useState(true)
   const [showAbout, setShowAbout] = useState(false)
-  const [showEffects, setShowEffects] = useState(true)
+  const [showEffects, setShowEffects] = useState(false)
   const [centerTrigger, setCenterTrigger] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
@@ -87,6 +87,8 @@ export default function App() {
     setMetronomeType,
     synthType,
     setSynthType,
+    synthVolume,
+    setSynthVolume,
     applyPreset,
     // Filter
     filterEnabled,
@@ -112,7 +114,10 @@ export default function App() {
     reverbDecay,
     setReverbDecay,
     reverbMix,
-    setReverbMix
+    setReverbMix,
+    // Filter sweep
+    filterSweepActive,
+    triggerFilterSweep
   } = useAudioEngine(pattern, tempo, loopStartStep, loopEndStep)
 
   const handleLoadFromCatalog = useCallback((catalogPattern: {
@@ -134,6 +139,8 @@ export default function App() {
       reverbDecay: number
       reverbMix: number
     }
+    loopStart?: number
+    loopEnd?: number
   }) => {
     // Calculate the pitch range of the incoming notes
     const pitches = catalogPattern.notes.map(n => n.pitch)
@@ -177,22 +184,32 @@ export default function App() {
       setReverbMix(s.reverbMix)
     }
 
+    // Apply loop settings if present
+    if (catalogPattern.loopStart !== undefined) {
+      setSelectionStart(catalogPattern.loopStart)
+    }
+    if (catalogPattern.loopEnd !== undefined) {
+      setSelectionEnd(catalogPattern.loopEnd)
+    }
+
     setActiveTab('editor')
     // Trigger centering on the loaded notes
     setCenterTrigger(prev => prev + 1)
   }, [loadPattern, setSynthType, setFilterEnabled, setFilterType, setFilterFreq, setFilterQ,
       setDelayEnabled, setDelayTime, setDelayFeedback, setDelayMix,
-      setReverbEnabled, setReverbDecay, setReverbMix])
+      setReverbEnabled, setReverbDecay, setReverbMix, setSelectionStart, setSelectionEnd])
 
   return (
     <TooltipProvider>
     <div className="flex flex-col h-screen">
+      {/* Animated background */}
+      <div className="animated-bg" />
+
       {/* Header */}
-      <header className="relative flex items-center justify-between px-6 py-4 border-b border-grid-line">
+      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-grid-line bg-grid-bg/80 backdrop-blur-sm">
         <Visualizer isPlaying={isPlaying} />
         <div className="relative z-10 flex items-center gap-3">
-          <Zap className="w-6 h-6 text-note-active" />
-          <h1 className="text-xl font-bold text-white tracking-tight">
+          <h1 className="text-4xl font-bold text-note-active tracking-tight title-glow">
             Reach for the Lasers
           </h1>
         </div>
@@ -263,11 +280,11 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="relative z-10 flex-1 overflow-hidden">
         {activeTab === 'editor' ? (
           <div className="flex flex-col h-full">
             {/* Controls Bar */}
-            <div className="flex items-center gap-6 px-6 py-4 border-b border-grid-line">
+            <div className="flex items-center gap-6 px-6 py-4 border-b border-grid-line bg-grid-bg/70 backdrop-blur-sm">
               <Transport
                 isPlaying={isPlaying}
                 onPlay={play}
@@ -284,6 +301,8 @@ export default function App() {
                 onMetronomeTypeChange={setMetronomeType}
                 synthType={synthType}
                 onSynthTypeChange={applyPreset}
+                synthVolume={synthVolume}
+                onSynthVolumeChange={setSynthVolume}
               />
               <div className="w-px h-8 bg-grid-line" />
               <ScaleSelector
@@ -316,23 +335,23 @@ export default function App() {
             </div>
 
             {/* Effects & Edit Bar */}
-            <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-grid-line bg-grid-bg/50">
-              <div className="flex items-center gap-4">
-                <Tooltipped tip={showEffects ? "Hide effects" : "Show effects"}>
-                  <button
-                    onClick={() => setShowEffects(!showEffects)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-                      showEffects
-                        ? 'bg-note-active/20 text-note-active'
-                        : 'bg-grid-line text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span className="text-sm">FX</span>
-                    <ChevronRight className={`w-4 h-4 transition-transform ${showEffects ? 'rotate-90' : ''}`} />
-                  </button>
-                </Tooltipped>
-                {showEffects && (
+            <div className="flex items-center gap-4 px-6 py-3 border-b border-grid-line bg-grid-bg/60 backdrop-blur-sm">
+              <Tooltipped tip={showEffects ? "Hide effects" : "Show effects"}>
+                <button
+                  onClick={() => setShowEffects(!showEffects)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+                    showEffects
+                      ? 'bg-note-active/20 text-note-active'
+                      : 'bg-grid-line text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="text-sm">FX</span>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${showEffects ? 'rotate-90' : ''}`} />
+                </button>
+              </Tooltipped>
+              {showEffects && (
+                <>
                   <EffectsPanel
                     filterEnabled={filterEnabled}
                     onFilterEnabledChange={setFilterEnabled}
@@ -357,8 +376,23 @@ export default function App() {
                     reverbMix={reverbMix}
                     onReverbMixChange={setReverbMix}
                   />
-                )}
-              </div>
+                  <Tooltipped tip="Auto filter sweep over 16 bars (up then down)">
+                    <button
+                      onClick={triggerFilterSweep}
+                      disabled={filterSweepActive}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all text-sm ${
+                        filterSweepActive
+                          ? 'bg-note-active text-grid-bg animate-pulse'
+                          : 'bg-grid-line text-gray-400 hover:text-white hover:bg-grid-bar'
+                      }`}
+                    >
+                      <Zap className="w-4 h-4" />
+                      Auto Filter
+                    </button>
+                  </Tooltipped>
+                </>
+              )}
+              {showEffects && <div className="w-px h-8 bg-grid-line" />}
               <EditToolbar
                 selectionStart={selectionStart}
                 selectionEnd={selectionEnd}
@@ -404,6 +438,8 @@ export default function App() {
                 theme={theme}
                 loopStartStep={loopStartStep}
                 loopEndStep={loopEndStep}
+                onLoopStartChange={setSelectionStart}
+                onLoopEndChange={setSelectionEnd}
               />
             </div>
           </div>
@@ -433,6 +469,8 @@ export default function App() {
             reverbDecay,
             reverbMix
           }}
+          loopStart={selectionStart}
+          loopEnd={selectionEnd}
           onClose={() => setShowExportModal(false)}
         />
       )}

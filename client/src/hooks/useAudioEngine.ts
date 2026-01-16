@@ -19,90 +19,6 @@ interface EffectPreset {
 }
 
 const SYNTH_PRESETS: Record<SynthType, EffectPreset> = {
-  // Saw - clean with subtle reverb
-  saw: {
-    filterEnabled: false,
-    filterType: 'lowpass',
-    filterFreq: 2000,
-    filterQ: 1,
-    delayEnabled: false,
-    delayTime: '8n',
-    delayFeedback: 0.3,
-    delayMix: 0.3,
-    reverbEnabled: true,
-    reverbDecay: 2.0,
-    reverbMix: 0.2
-  },
-  // Supersaw - big reverb, slight delay
-  supersaw: {
-    filterEnabled: false,
-    filterType: 'lowpass',
-    filterFreq: 3000,
-    filterQ: 1,
-    delayEnabled: true,
-    delayTime: '8n.',
-    delayFeedback: 0.25,
-    delayMix: 0.2,
-    reverbEnabled: true,
-    reverbDecay: 3.0,
-    reverbMix: 0.35
-  },
-  // Pluck - dotted delay for arps
-  pluck: {
-    filterEnabled: false,
-    filterType: 'lowpass',
-    filterFreq: 4000,
-    filterQ: 1,
-    delayEnabled: true,
-    delayTime: '8n.',
-    delayFeedback: 0.4,
-    delayMix: 0.35,
-    reverbEnabled: true,
-    reverbDecay: 1.5,
-    reverbMix: 0.25
-  },
-  // Stab - short reverb, punchy
-  stab: {
-    filterEnabled: false,
-    filterType: 'lowpass',
-    filterFreq: 3500,
-    filterQ: 1,
-    delayEnabled: true,
-    delayTime: '8n',
-    delayFeedback: 0.3,
-    delayMix: 0.25,
-    reverbEnabled: true,
-    reverbDecay: 1.2,
-    reverbMix: 0.2
-  },
-  // Acid - resonant lowpass filter, classic 303
-  acid: {
-    filterEnabled: true,
-    filterType: 'lowpass',
-    filterFreq: 1200,
-    filterQ: 8,
-    delayEnabled: true,
-    delayTime: '16n',
-    delayFeedback: 0.35,
-    delayMix: 0.25,
-    reverbEnabled: false,
-    reverbDecay: 1.5,
-    reverbMix: 0.15
-  },
-  // Acid Bright - higher filter, more resonance
-  acidBright: {
-    filterEnabled: true,
-    filterType: 'lowpass',
-    filterFreq: 2500,
-    filterQ: 12,
-    delayEnabled: true,
-    delayTime: '16n',
-    delayFeedback: 0.4,
-    delayMix: 0.3,
-    reverbEnabled: false,
-    reverbDecay: 1.0,
-    reverbMix: 0.1
-  },
   // Acid Dark - low filter, moody
   acidDark: {
     filterEnabled: true,
@@ -117,102 +33,101 @@ const SYNTH_PRESETS: Record<SynthType, EffectPreset> = {
     reverbDecay: 2.5,
     reverbMix: 0.3
   },
-  // Acid Square - bandpass for hollow sound
-  acidSquare: {
-    filterEnabled: true,
-    filterType: 'bandpass',
-    filterFreq: 1500,
-    filterQ: 4,
-    delayEnabled: true,
-    delayTime: '8n.',
-    delayFeedback: 0.35,
-    delayMix: 0.3,
-    reverbEnabled: false,
-    reverbDecay: 1.5,
-    reverbMix: 0.15
-  },
-  // Acid Soft - gentle filter, more reverb
-  acidSoft: {
+  // Acid Dark Deep - very low filter, subby
+  acidDarkDeep: {
     filterEnabled: true,
     filterType: 'lowpass',
-    filterFreq: 1800,
-    filterQ: 3,
+    filterFreq: 500,
+    filterQ: 8,
     delayEnabled: true,
     delayTime: '4n',
-    delayFeedback: 0.3,
+    delayFeedback: 0.5,
+    delayMix: 0.3,
+    reverbEnabled: true,
+    reverbDecay: 3.5,
+    reverbMix: 0.4
+  },
+  // Acid Dark Gritty - distorted character
+  acidDarkGritty: {
+    filterEnabled: true,
+    filterType: 'lowpass',
+    filterFreq: 1000,
+    filterQ: 10,
+    delayEnabled: true,
+    delayTime: '16n',
+    delayFeedback: 0.4,
     delayMix: 0.25,
     reverbEnabled: true,
     reverbDecay: 2.0,
-    reverbMix: 0.3
+    reverbMix: 0.25
+  },
+  // Acid Dark Hollow - bandpass for haunting sound
+  acidDarkHollow: {
+    filterEnabled: true,
+    filterType: 'bandpass',
+    filterFreq: 700,
+    filterQ: 5,
+    delayEnabled: true,
+    delayTime: '8n.',
+    delayFeedback: 0.55,
+    delayMix: 0.4,
+    reverbEnabled: true,
+    reverbDecay: 4.0,
+    reverbMix: 0.45
+  },
+  // Acid Dark Sub - deep sub bass character
+  acidDarkSub: {
+    filterEnabled: true,
+    filterType: 'lowpass',
+    filterFreq: 400,
+    filterQ: 4,
+    delayEnabled: true,
+    delayTime: '4n',
+    delayFeedback: 0.35,
+    delayMix: 0.2,
+    reverbEnabled: true,
+    reverbDecay: 3.0,
+    reverbMix: 0.35
   }
 }
 
 function createSynth(type: SynthType): Tone.PolySynth {
   switch (type) {
-    // === SAW ===
-    case 'saw':
-      // Classic trance saw - punchy and full
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', spread: 20, count: 5 },
-        envelope: { attack: 0.001, decay: 0.2, sustain: 0.3, release: 0.4 }
-      })
-    case 'supersaw':
-      // Wide supersaw - detuned for big sound
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', spread: 50, count: 7 },
-        envelope: { attack: 0.005, decay: 0.3, sustain: 0.4, release: 0.6 }
-      })
-
-    // === PLUCK / STAB ===
-    case 'pluck':
-      // Short percussive pluck
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', spread: 20, count: 4 },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.08 }
-      })
-    case 'stab':
-      // Classic trance stab
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', spread: 30, count: 5 },
-        envelope: { attack: 0.001, decay: 0.15, sustain: 0.1, release: 0.1 }
-      })
-
-    // === ACID VARIANTS ===
-    case 'acid':
-      // Classic 303 acid - pure saw, snappy
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.001, decay: 0.12, sustain: 0.05, release: 0.1 }
-      })
-    case 'acidBright':
-      // Bright acid - more attack, cutting
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.001, decay: 0.08, sustain: 0.1, release: 0.05 }
-      })
     case 'acidDark':
       // Dark acid - longer decay, moody
       return new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sawtooth' },
         envelope: { attack: 0.001, decay: 0.25, sustain: 0.02, release: 0.15 }
       })
-    case 'acidSquare':
-      // Square wave acid - hollow, aggressive
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'square' },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0.08, release: 0.08 }
-      })
-    case 'acidSoft':
-      // Soft acid - gentler attack, rounder
+    case 'acidDarkDeep':
+      // Deep dark acid - very long decay, subby
       return new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.12 }
+        envelope: { attack: 0.005, decay: 0.4, sustain: 0.05, release: 0.25 }
       })
-
-    default:
+    case 'acidDarkGritty':
+      // Gritty dark acid - slightly detuned for character
       return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', spread: 20, count: 5 },
-        envelope: { attack: 0.001, decay: 0.2, sustain: 0.3, release: 0.4 }
+        oscillator: { type: 'fatsawtooth', spread: 8, count: 2 },
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0.08, release: 0.12 }
+      })
+    case 'acidDarkHollow':
+      // Hollow dark acid - triangle wave for haunting tone
+      return new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.002, decay: 0.35, sustain: 0.03, release: 0.2 }
+      })
+    case 'acidDarkSub':
+      // Sub dark acid - sine-like deep bass
+      return new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sawtooth' },
+        envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.3 }
+      })
+    default:
+      // Default to acidDark
+      return new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sawtooth' },
+        envelope: { attack: 0.001, decay: 0.25, sustain: 0.02, release: 0.15 }
       })
   }
 }
@@ -240,7 +155,8 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [metronomeVolume, setMetronomeVolume] = useState(-12) // dB
   const [metronomeType, setMetronomeType] = useState<'click' | '909'>('click')
-  const [synthType, setSynthType] = useState<SynthType>('saw')
+  const [synthType, setSynthType] = useState<SynthType>('acidDark')
+  const [synthVolume, setSynthVolume] = useState(-6) // dB
 
   // Filter state
   const [filterEnabled, setFilterEnabled] = useState(false)
@@ -343,7 +259,7 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
     }
 
     synthRef.current = createSynth(synthType)
-    synthRef.current.volume.value = -6
+    synthRef.current.volume.value = synthVolume
 
     // Build signal chain based on enabled effects
     // Synth -> [Filter] -> [Reverb] -> [Delay mix] -> Destination
@@ -374,6 +290,13 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
       synthRef.current?.dispose()
     }
   }, [synthType, filterEnabled, reverbEnabled, delayEnabled])
+
+  // Update synth volume
+  useEffect(() => {
+    if (synthRef.current) {
+      synthRef.current.volume.value = synthVolume
+    }
+  }, [synthVolume])
 
   // Initialize metronome sounds
   useEffect(() => {
@@ -520,6 +443,87 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
     setReverbMix(preset.reverbMix)
   }, [])
 
+  // Auto filter sweep state
+  const [filterSweepActive, setFilterSweepActive] = useState(false)
+  const filterSweepTimeoutRef = useRef<number | null>(null)
+
+  // Trigger filter sweep over 16 bars (up 8 bars, down 8 bars)
+  const triggerFilterSweep = useCallback(() => {
+    if (!filterRef.current) return
+
+    // Enable filter if not already
+    if (!filterEnabled) {
+      setFilterEnabled(true)
+    }
+
+    // Set to lowpass for sweep
+    setFilterType('lowpass')
+
+    const lowFreq = 200
+    const highFreq = 8000
+
+    filterRef.current.frequency.value = lowFreq
+    setFilterFreq(lowFreq)
+    setFilterSweepActive(true)
+
+    // Calculate sweep duration: 8 bars each direction
+    // 8 bars = 32 beats, duration = 32 beats * (60 / tempo) seconds
+    const halfDuration = 32 * (60 / tempo)
+
+    // Ramp up over 8 bars
+    filterRef.current.frequency.rampTo(highFreq, halfDuration)
+
+    // Schedule ramp down after 8 bars
+    const now = Tone.now()
+    filterRef.current.frequency.rampTo(lowFreq, halfDuration, now + halfDuration)
+
+    // Update the UI state periodically during sweep
+    const updateInterval = 50 // ms
+    const totalDuration = halfDuration * 2
+    const totalSteps = Math.floor(totalDuration * 1000 / updateInterval)
+    const halfSteps = totalSteps / 2
+    let currentStep = 0
+
+    const updateUI = () => {
+      currentStep++
+      let newFreq: number
+
+      if (currentStep <= halfSteps) {
+        // Sweeping up
+        const progress = currentStep / halfSteps
+        newFreq = lowFreq + (highFreq - lowFreq) * progress
+      } else {
+        // Sweeping down
+        const progress = (currentStep - halfSteps) / halfSteps
+        newFreq = highFreq - (highFreq - lowFreq) * progress
+      }
+
+      setFilterFreq(Math.round(newFreq))
+
+      if (currentStep < totalSteps) {
+        filterSweepTimeoutRef.current = window.setTimeout(updateUI, updateInterval)
+      } else {
+        setFilterSweepActive(false)
+      }
+    }
+
+    // Clear any existing timeout
+    if (filterSweepTimeoutRef.current) {
+      window.clearTimeout(filterSweepTimeoutRef.current)
+    }
+
+    filterSweepTimeoutRef.current = window.setTimeout(updateUI, updateInterval)
+  }, [filterEnabled, tempo])
+
+  // Cleanup sweep timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterSweepTimeoutRef.current) {
+        window.clearTimeout(filterSweepTimeoutRef.current)
+      }
+    }
+  }, [])
+
   return {
     isPlaying,
     currentStep,
@@ -535,6 +539,8 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
     setMetronomeType,
     synthType,
     setSynthType,
+    synthVolume,
+    setSynthVolume,
     applyPreset,
     // Filter
     filterEnabled,
@@ -560,6 +566,9 @@ export function useAudioEngine(pattern: Pattern, tempo: number, loopStartStep: n
     reverbDecay,
     setReverbDecay,
     reverbMix,
-    setReverbMix
+    setReverbMix,
+    // Filter sweep
+    filterSweepActive,
+    triggerFilterSweep
   }
 }

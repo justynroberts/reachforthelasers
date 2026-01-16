@@ -1,4 +1,4 @@
-import { X, ExternalLink, Heart } from 'lucide-react'
+import { X, ExternalLink, Coffee } from 'lucide-react'
 
 interface AboutModalProps {
   onClose: () => void
@@ -41,13 +41,16 @@ export function AboutModal({ onClose }: AboutModalProps) {
             </a>
           </div>
 
-          <button
-            onClick={onClose}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-note-active text-grid-bg rounded-lg hover:opacity-90 transition-opacity font-medium"
+          <a
+            href="https://www.buymeacoffee.com/justynrobeu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#FFDD00] text-black rounded-lg hover:opacity-90 transition-opacity font-medium"
+            style={{ fontFamily: 'Cookie, cursive' }}
           >
-            <Heart className="w-4 h-4" />
-            Thanks Finton
-          </button>
+            <Coffee className="w-5 h-5" />
+            Buy me a coffee
+          </a>
         </div>
       </div>
     </div>

@@ -3,7 +3,6 @@ import type { CatalogPattern, ScaleType, Note, Tag } from '../../types'
 import { TAGS } from '../../types'
 import { SCALES } from '../../scales'
 import { PRESETS } from '../../presets'
-import { SaveModal } from './SaveModal'
 import type { SoundSettings } from '../Export/ExportModal'
 
 interface CatalogProps {
@@ -13,6 +12,8 @@ interface CatalogProps {
     rootNote: number
     tempo: number
     soundSettings?: SoundSettings
+    loopStart?: number
+    loopEnd?: number
   }) => void
 }
 
@@ -33,9 +34,9 @@ function generateBuiltInPatterns(): CatalogPattern[] {
       description: preset.description,
       notes,
       scale: preset.recommendedScale,
-      rootNote: 45, // A2
+      rootNote: 45,
       tempo: preset.suggestedTempo,
-      tags: [preset.complexity === 'simple' ? 'Simple' : preset.complexity === 'complex' ? 'Complex' : 'Melodic'] as Tag[],
+      tags: ['Simple'] as Tag[],
       createdAt: new Date().toISOString(),
       loadCount: 0
     }
@@ -43,12 +44,12 @@ function generateBuiltInPatterns(): CatalogPattern[] {
 }
 
 // Load user-saved patterns from localStorage
-function loadUserPatterns(): (CatalogPattern & { soundSettings?: SoundSettings })[] {
+function loadUserPatterns(): (CatalogPattern & { soundSettings?: SoundSettings; loopStart?: number; loopEnd?: number })[] {
   try {
     const stored = localStorage.getItem(CATALOG_STORAGE_KEY)
     if (!stored) return []
     const patterns = JSON.parse(stored)
-    return patterns.map((p: { id: string; name: string; notes: Note[]; scale: ScaleType; rootNote: number; tempo: number; soundSettings?: SoundSettings; createdAt: string }) => ({
+    return patterns.map((p: { id: string; name: string; notes: Note[]; scale: ScaleType; rootNote: number; tempo: number; soundSettings?: SoundSettings; loopStart?: number; loopEnd?: number; createdAt: string }) => ({
       ...p,
       description: 'User created pattern',
       tags: ['User'] as Tag[],
@@ -66,9 +67,8 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('newest')
   const [selectedTags, setSelectedTags] = useState<Tag[]>([])
-  const [showSaveModal, setShowSaveModal] = useState(false)
 
-  // Built-in presets
+  // Built-in preset
   const builtInPatterns = useMemo(() => generateBuiltInPatterns(), [])
 
   // User-saved patterns from localStorage
@@ -110,19 +110,18 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
     fetchPatterns()
   }, [fetchPatterns])
 
-  // Combine user, built-in and server patterns, filter by search
+  // Combine built-in, user and server patterns, filter by search
   const allPatterns = useMemo(() => {
-    // User patterns first, then built-in, then server
-    const combined = [...userPatterns, ...builtInPatterns, ...patterns]
+    const combined = [...builtInPatterns, ...userPatterns, ...patterns]
     if (!search) return combined
     const searchLower = search.toLowerCase()
     return combined.filter(p =>
       p.name.toLowerCase().includes(searchLower) ||
       p.description.toLowerCase().includes(searchLower)
     )
-  }, [userPatterns, builtInPatterns, patterns, search])
+  }, [builtInPatterns, userPatterns, patterns, search])
 
-  const handleLoad = async (pattern: CatalogPattern & { soundSettings?: SoundSettings }) => {
+  const handleLoad = async (pattern: CatalogPattern & { soundSettings?: SoundSettings; loopStart?: number; loopEnd?: number }) => {
     // Increment load count
     try {
       await fetch(`/api/patterns/${pattern.id}/load`, { method: 'POST' })
@@ -135,7 +134,9 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
       scale: pattern.scale,
       rootNote: pattern.rootNote,
       tempo: pattern.tempo,
-      soundSettings: pattern.soundSettings
+      soundSettings: pattern.soundSettings,
+      loopStart: pattern.loopStart,
+      loopEnd: pattern.loopEnd
     })
   }
 
@@ -168,12 +169,6 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
             <option value="mostLoaded">Most Loaded</option>
             <option value="random">Random</option>
           </select>
-          <button
-            onClick={() => setShowSaveModal(true)}
-            className="px-4 py-2 bg-note-active text-grid-bg rounded hover:opacity-90"
-          >
-            Save Current Pattern
-          </button>
         </div>
 
         {/* Tags */}
@@ -214,13 +209,6 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
           </div>
         )}
       </div>
-
-      {showSaveModal && (
-        <SaveModal
-          onClose={() => setShowSaveModal(false)}
-          onSaved={fetchPatterns}
-        />
-      )}
     </div>
   )
 }

@@ -93,20 +93,14 @@ export const MIN_CHORD_DURATION = 4 // Quarter bar minimum
 
 // Synth sound types
 export type SynthType =
-  | 'saw' | 'supersaw'
-  | 'pluck' | 'stab'
-  | 'acid' | 'acidBright' | 'acidDark' | 'acidSquare' | 'acidSoft'
+  | 'acidDark' | 'acidDarkDeep' | 'acidDarkGritty' | 'acidDarkHollow' | 'acidDarkSub'
 
 export const SYNTH_TYPES: { value: SynthType; label: string }[] = [
-  { value: 'saw', label: 'Saw' },
-  { value: 'supersaw', label: 'Supersaw' },
-  { value: 'pluck', label: 'Pluck' },
-  { value: 'stab', label: 'Stab' },
-  { value: 'acid', label: 'Acid' },
-  { value: 'acidBright', label: 'Acid Bright' },
   { value: 'acidDark', label: 'Acid Dark' },
-  { value: 'acidSquare', label: 'Acid Square' },
-  { value: 'acidSoft', label: 'Acid Soft' },
+  { value: 'acidDarkDeep', label: 'Acid Dark Deep' },
+  { value: 'acidDarkGritty', label: 'Acid Dark Gritty' },
+  { value: 'acidDarkHollow', label: 'Acid Dark Hollow' },
+  { value: 'acidDarkSub', label: 'Acid Dark Sub' },
 ]
 
 // Filter types

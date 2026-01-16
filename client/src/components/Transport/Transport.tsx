@@ -20,6 +20,8 @@ interface TransportProps {
   onMetronomeTypeChange: (type: MetronomeType) => void
   synthType: SynthType
   onSynthTypeChange: (type: SynthType) => void
+  synthVolume: number
+  onSynthVolumeChange: (volume: number) => void
 }
 
 export function Transport({
@@ -38,6 +40,8 @@ export function Transport({
   onMetronomeTypeChange,
   synthType,
   onSynthTypeChange,
+  synthVolume,
+  onSynthVolumeChange,
 }: TransportProps) {
   const { setTooltip } = useTooltip()
 
@@ -54,7 +58,7 @@ export function Transport({
         {...tip(isPlaying ? 'Stop playback' : 'Start playback')}
         className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg ${
           isPlaying
-            ? 'bg-red-500 hover:bg-red-600 hover:scale-105'
+            ? 'bg-red-500 hover:bg-red-600 hover:scale-105 glow-rainbow'
             : 'bg-note-active hover:opacity-90 hover:scale-105'
         }`}
         aria-label={isPlaying ? 'Stop' : 'Play'}
@@ -164,9 +168,9 @@ export function Transport({
         )}
       </div>
 
-      {/* Synth Type */}
-      <div className="flex items-center gap-2" {...tip('Choose synthesizer sound')}>
-        <span className="text-sm font-medium text-gray-400">Sound</span>
+      {/* Synth Type + Volume */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-gray-400" {...tip('Choose synthesizer sound')}>Sound</span>
         <select
           value={synthType}
           onChange={e => onSynthTypeChange(e.target.value as SynthType)}
@@ -178,6 +182,18 @@ export function Transport({
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-1" {...tip('Adjust synth volume')}>
+          <Volume2 className="w-4 h-4 text-gray-400" />
+          <input
+            type="range"
+            min={-24}
+            max={0}
+            value={synthVolume}
+            onChange={e => onSynthVolumeChange(parseInt(e.target.value))}
+            className="w-16 accent-note-active"
+            aria-label="Synth volume"
+          />
+        </div>
       </div>
     </div>
   )

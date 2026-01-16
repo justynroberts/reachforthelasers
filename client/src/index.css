@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Cookie&family=VT323&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,30 +8,34 @@
   --grid-cell-size: 24px;
   --grid-header-height: 32px;
 
-  /* Dark theme (default) */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #1a1a2e;
-  --bg-tertiary: #2d2d44;
-  --text-primary: #e0e0e0;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --border-color: #1a1a2e;
-  --note-active: #00d4ff;
-  --note-accent: #ff00aa;
-  --playhead: #ffff00;
+  /* CRT Dark theme (default) */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111611;
+  --bg-tertiary: #1a1f1a;
+  --text-primary: #33ff33;
+  --text-secondary: #22cc22;
+  --text-muted: #1a8a1a;
+  --border-color: #1a3a1a;
+  --note-active: #33ff33;
+  --note-accent: #66ff66;
+  --playhead: #ffffff;
+  --loop-marker: #33ff33;
+  --crt-glow: #33ff33;
 }
 
 [data-theme="light"] {
-  --bg-primary: #f8f9fa;
-  --bg-secondary: #e9ecef;
-  --bg-tertiary: #dee2e6;
-  --text-primary: #212529;
-  --text-secondary: #495057;
-  --text-muted: #6c757d;
-  --border-color: #dee2e6;
-  --note-active: #0077b6;
-  --note-accent: #d63384;
-  --playhead: #ffc107;
+  --bg-primary: #0d1a0d;
+  --bg-secondary: #132613;
+  --bg-tertiary: #1a331a;
+  --text-primary: #44ff44;
+  --text-secondary: #33dd33;
+  --text-muted: #22aa22;
+  --border-color: #224422;
+  --note-active: #44ff44;
+  --note-accent: #77ff77;
+  --playhead: #ffffff;
+  --loop-marker: #44ff44;
+  --crt-glow: #44ff44;
 }
 
 * {
@@ -43,18 +47,156 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.2s, color 0.2s;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
-/* Scrollbar styling */
+/* CRT Screen Effects Container */
+.animated-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* CRT Scanlines */
+.animated-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* CRT Vignette */
+.animated-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  pointer-events: none;
+}
+
+/* CRT Screen Flicker */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.9; }
+  94% { opacity: 1; }
+  97% { opacity: 0.95; }
+  98% { opacity: 1; }
+}
+
+/* CRT Glitch effect - rare and subtle */
+@keyframes glitch {
+  0%, 100% {
+    transform: translate(0);
+    filter: none;
+  }
+  /* Single glitch at 15% through the animation */
+  14.8% {
+    transform: translate(0);
+    filter: none;
+  }
+  15% {
+    transform: translate(-1px, 0);
+    filter: hue-rotate(30deg);
+  }
+  15.1% {
+    transform: translate(1px, 0);
+  }
+  15.2% {
+    transform: translate(0);
+    filter: none;
+  }
+  /* Another glitch at 73% */
+  72.8% {
+    transform: translate(0);
+    filter: none;
+  }
+  73% {
+    transform: translate(2px, 0) skewX(0.5deg);
+  }
+  73.15% {
+    transform: translate(-1px, 0);
+  }
+  73.3% {
+    transform: translate(0);
+    filter: none;
+  }
+}
+
+/* Horizontal tear/roll effect */
+@keyframes horizontalTear {
+  0%, 100% {
+    clip-path: inset(0 0 0 0);
+  }
+  33% {
+    clip-path: inset(0 0 0 0);
+  }
+  33.1% {
+    clip-path: inset(40% 0 50% 0);
+  }
+  33.2% {
+    clip-path: inset(0 0 0 0);
+  }
+  77% {
+    clip-path: inset(0 0 0 0);
+  }
+  77.1% {
+    clip-path: inset(60% 0 30% 0);
+  }
+  77.3% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+#root {
+  animation: flicker 10s infinite, glitch 45s infinite;
+}
+
+/* CRT Glow on text - subtle */
+h2, h3, .neon-text {
+  text-shadow:
+    0 0 5px var(--crt-glow),
+    0 0 10px var(--crt-glow);
+}
+
+/* Title glow - crisp and readable */
+.title-glow {
+  text-shadow:
+    0 0 2px var(--crt-glow),
+    0 0 4px rgba(51, 255, 51, 0.4);
+}
+
+/* Scrollbar styling - CRT green */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -65,12 +207,14 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
-  border-radius: 4px;
+  background: var(--text-muted);
+  border-radius: 0;
+  border: 1px solid var(--crt-glow);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--text-secondary);
+  box-shadow: 0 0 5px var(--crt-glow);
 }
 
 /* Grid selection */
@@ -79,11 +223,12 @@ body {
 }
 
 .grid-cell:hover {
-  background-color: rgba(0, 212, 255, 0.1);
+  background-color: rgba(51, 255, 51, 0.1);
 }
 
 .grid-cell.active {
   background-color: var(--note-active);
+  box-shadow: 0 0 8px var(--crt-glow);
 }
 
 .grid-cell.accent {
@@ -123,4 +268,261 @@ body {
 
 .border-app {
   border-color: var(--border-color);
+}
+
+/* ===== CRT ANIMATIONS ===== */
+
+/* CRT Glow effect for active elements */
+@keyframes crtGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--crt-glow), 0 0 10px rgba(51, 255, 51, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px var(--crt-glow), 0 0 20px rgba(51, 255, 51, 0.5);
+  }
+}
+
+.glow-active {
+  animation: crtGlow 2s ease-in-out infinite;
+}
+
+/* Button styling - CRT style */
+button, .btn {
+  transition: all 0.1s ease;
+  border: 1px solid var(--border-color);
+}
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  box-shadow: 0 0 10px var(--crt-glow), inset 0 0 5px rgba(51, 255, 51, 0.1);
+  border-color: var(--crt-glow);
+}
+
+button:active:not(:disabled), .btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Smooth fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+/* Scale in animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+/* Floating animation for subtle movement */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* CRT Shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(51, 255, 51, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* CRT pulsing glow for play button */
+@keyframes crtPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--crt-glow), 0 0 20px var(--crt-glow);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--crt-glow), 0 0 40px var(--crt-glow), 0 0 60px var(--crt-glow);
+  }
+}
+
+.glow-rainbow {
+  animation: crtPulse 1s ease-in-out infinite;
+}
+
+/* Pulse animation for attention */
+@keyframes attention {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-attention {
+  animation: attention 1s ease-in-out infinite;
+}
+
+/* Border glow effect */
+@keyframes borderGlow {
+  0%, 100% {
+    border-color: rgba(51, 255, 51, 0.3);
+  }
+  50% {
+    border-color: rgba(51, 255, 51, 0.8);
+  }
+}
+
+.border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+
+/* Smooth content reveal */
+main, header, .panel {
+  position: relative;
+  z-index: 1;
+}
+
+/* Active note glow in grid - CRT style */
+.note-glow {
+  box-shadow:
+    0 0 4px var(--crt-glow),
+    0 0 8px var(--crt-glow),
+    inset 0 0 4px rgba(51, 255, 51, 0.5);
+}
+
+/* Hover scale for interactive elements */
+.hover-scale {
+  transition: transform 0.15s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* Staggered animation delay helpers */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* CRT Modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease;
+  background: rgba(0, 10, 0, 0.8);
+}
+
+/* Input focus glow - CRT style */
+input, select, textarea {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 10px var(--crt-glow), inset 0 0 5px rgba(51, 255, 51, 0.1);
+  border-color: var(--crt-glow) !important;
+}
+
+/* Override Tailwind colors for CRT theme */
+.bg-grid-bg {
+  background-color: var(--bg-primary) !important;
+}
+
+.bg-grid-line {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-grid-bar {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.text-white {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-300, .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.border-grid-line {
+  border-color: var(--border-color) !important;
+}
+
+.bg-note-active {
+  background-color: var(--note-active) !important;
+  box-shadow: 0 0 10px var(--crt-glow);
+}
+
+.text-note-active {
+  color: var(--note-active) !important;
+  text-shadow: 0 0 5px var(--crt-glow);
+}
+
+/* CRT-style selection */
+::selection {
+  background: var(--note-active);
+  color: var(--bg-primary);
+}
+
+/* Make grid have CRT green notes */
+.bg-note-active, [class*="bg-note"] {
+  box-shadow: 0 0 8px var(--crt-glow);
 }

@@ -12,27 +12,27 @@ interface TourStep {
 const tourSteps: TourStep[] = [
   {
     title: 'Welcome to Reach for the Lasers',
-    description: 'Create trance lead patterns with this browser-based sequencer. Click on the grid to add notes, then hit play to hear your creation.',
+    description: 'Create trance lead patterns with this browser-based sequencer. Click on the grid to add notes, then hit play to hear your creation. Drag the green loop markers to set your loop region.',
   },
   {
     title: 'Browse Patterns',
-    description: 'Check out the Browse tab for pre-made rolling patterns. Load one to get started quickly, then customize it.',
+    description: 'Check out the Browse tab for community patterns. Load one to get started quickly, then customize it to make it your own.',
   },
   {
     title: 'Choose Your Sound',
-    description: 'Select from 15 synth sounds including Hyper Saw, Hoover, Reese, and more. Each has its own character.',
+    description: 'Select from 5 Acid Dark synth variants - each with its own character from deep and subby to gritty and hollow. Use the volume slider next to the sound selector.',
   },
   {
     title: 'Add Effects',
-    description: 'Use Filter, Echo (delay), and Reverb to shape your sound. Try the filter sweep for that classic trance feel.',
+    description: 'Click FX to reveal Filter, Delay, and Reverb controls. Try the Auto Filter button for a classic 16-bar filter sweep (up then down).',
   },
   {
     title: 'Select Bars & Edit',
     description: 'Use the bar selector to pick a range, then copy, paste, duplicate, or loop your selection. Add octave harmonics with the +8va button.',
   },
   {
-    title: 'Export & Save',
-    description: 'Export your pattern as MIDI to use in your DAW. Patterns can also be saved to your local catalog with sound settings included.',
+    title: 'Export & Share',
+    description: 'Export your pattern as MIDI to use in your DAW. All patterns are automatically shared with the community - name your creation and share the inspiration!',
   },
 ]
 

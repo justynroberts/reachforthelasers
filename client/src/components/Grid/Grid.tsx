@@ -16,6 +16,8 @@ interface GridProps {
   theme?: string // Theme for redraw trigger
   loopStartStep?: number // Loop start position in steps
   loopEndStep?: number // Loop end position in steps
+  onLoopStartChange?: (bar: number) => void // Callback when loop start is dragged
+  onLoopEndChange?: (bar: number) => void // Callback when loop end is dragged
 }
 
 const CELL_WIDTH = 24
@@ -35,11 +37,15 @@ export function Grid({
   theme,
   loopStartStep = 0,
   loopEndStep = 64,
+  onLoopStartChange,
+  onLoopEndChange,
 }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragMode, setDragMode] = useState<'add' | 'remove'>('add')
+  const [loopDragMode, setLoopDragMode] = useState<'start' | 'end' | null>(null)
+  const [cursorStyle, setCursorStyle] = useState<'crosshair' | 'ew-resize' | 'grab'>('crosshair')
   const lastCellRef = useRef<{ step: number; pitch: number } | null>(null)
 
   const scaleNotes = getScaleNotes(scale, rootNote, OCTAVE_RANGE)
@@ -72,8 +78,63 @@ export function Grid({
     return { step, pitch }
   }, [pitchCount])
 
+  // Check if mouse is on a loop marker (in header area)
+  const getLoopMarkerHit = useCallback((clientX: number, clientY: number): 'start' | 'end' | 'region' | null => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left - PITCH_LABEL_WIDTH
+    const y = clientY - rect.top
+
+    // Only check header area (first 20px for the loop indicator)
+    if (y < 0 || y > 20) return null
+
+    const loopStartX = loopStartStep * CELL_WIDTH
+    const loopEndX = loopEndStep * CELL_WIDTH
+    const hitTolerance = 10 // pixels
+
+    // Check start marker
+    if (Math.abs(x - loopStartX) < hitTolerance) {
+      return 'start'
+    }
+    // Check end marker
+    if (Math.abs(x - loopEndX) < hitTolerance) {
+      return 'end'
+    }
+    // Check if in the region (for potential future drag-whole-region feature)
+    if (x > loopStartX + hitTolerance && x < loopEndX - hitTolerance) {
+      return 'region'
+    }
+
+    return null
+  }, [loopStartStep, loopEndStep])
+
+  // Get bar boundary from mouse position (snaps to nearest bar line)
+  const getBarFromPosition = useCallback((clientX: number, forEnd: boolean = false): number => {
+    const canvas = canvasRef.current
+    if (!canvas) return 0
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left - PITCH_LABEL_WIDTH
+    // Snap to nearest bar boundary
+    const bar = Math.round(x / (CELL_WIDTH * STEPS_PER_BAR))
+    // For start: 0-15, for end: 1-16
+    return forEnd
+      ? Math.max(1, Math.min(16, bar))
+      : Math.max(0, Math.min(15, bar))
+  }, [])
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return // Left click only
+
+    // Check for loop marker hit first
+    const loopHit = getLoopMarkerHit(e.clientX, e.clientY)
+    if (loopHit === 'start' || loopHit === 'end') {
+      setLoopDragMode(loopHit)
+      e.preventDefault()
+      return
+    }
 
     const cell = getCellFromPosition(e.clientX, e.clientY)
     if (!cell) return
@@ -83,9 +144,40 @@ export function Grid({
     setIsDragging(true)
     lastCellRef.current = cell
     onToggleNote(cell.step, cell.pitch)
-  }, [getCellFromPosition, noteSet, onToggleNote])
+  }, [getCellFromPosition, getLoopMarkerHit, noteSet, onToggleNote])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Handle loop marker dragging
+    if (loopDragMode) {
+      const currentStartBar = Math.floor(loopStartStep / STEPS_PER_BAR)
+      const currentEndBar = Math.floor(loopEndStep / STEPS_PER_BAR)
+
+      if (loopDragMode === 'start') {
+        const bar = getBarFromPosition(e.clientX, false)
+        // Start must be at least 1 bar before end
+        if (bar < currentEndBar) {
+          onLoopStartChange?.(bar)
+        }
+      } else if (loopDragMode === 'end') {
+        const bar = getBarFromPosition(e.clientX, true)
+        // End must be at least 1 bar after start
+        if (bar > currentStartBar) {
+          onLoopEndChange?.(bar)
+        }
+      }
+      return
+    }
+
+    // Update cursor based on hover
+    const loopHit = getLoopMarkerHit(e.clientX, e.clientY)
+    if (loopHit === 'start' || loopHit === 'end') {
+      setCursorStyle('ew-resize')
+    } else if (loopHit === 'region') {
+      setCursorStyle('grab')
+    } else {
+      setCursorStyle('crosshair')
+    }
+
     if (!isDragging) return
 
     const cell = getCellFromPosition(e.clientX, e.clientY)
@@ -102,10 +194,11 @@ export function Grid({
     if ((dragMode === 'add' && !hasNote) || (dragMode === 'remove' && hasNote)) {
       onToggleNote(cell.step, cell.pitch)
     }
-  }, [isDragging, dragMode, getCellFromPosition, noteSet, onToggleNote])
+  }, [isDragging, dragMode, loopDragMode, getCellFromPosition, getBarFromPosition, getLoopMarkerHit, noteSet, onToggleNote, loopStartStep, loopEndStep, onLoopStartChange, onLoopEndChange])
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
+    setLoopDragMode(null)
     lastCellRef.current = null
   }, [])
 
@@ -160,6 +253,7 @@ export function Grid({
     const noteActive = styles.getPropertyValue('--note-active').trim() || '#00d4ff'
     const noteAccent = styles.getPropertyValue('--note-accent').trim() || '#ff00aa'
     const playheadColor = styles.getPropertyValue('--playhead').trim() || '#ffff00'
+    const loopMarkerColor = styles.getPropertyValue('--loop-marker').trim() || '#33ff33'
 
     const dpr = window.devicePixelRatio || 1
     canvas.width = (gridWidth + PITCH_LABEL_WIDTH) * dpr
@@ -184,25 +278,29 @@ export function Grid({
       ctx.fillText(midiToNoteName(midiNote), PITCH_LABEL_WIDTH - 8, y)
     }
 
-    // Draw loop indicator in header
+    // Draw loop indicator in header (CRT phosphor green style)
     const loopStartX = PITCH_LABEL_WIDTH + loopStartStep * CELL_WIDTH
     const loopEndX = PITCH_LABEL_WIDTH + loopEndStep * CELL_WIDTH
     const loopIndicatorHeight = 6
     const loopIndicatorY = 4
 
+    // CRT glow effect
+    ctx.shadowColor = loopMarkerColor
+    ctx.shadowBlur = 8
+
     // Loop region background
-    ctx.fillStyle = noteActive
-    ctx.globalAlpha = 0.3
+    ctx.fillStyle = loopMarkerColor
+    ctx.globalAlpha = 0.25
     ctx.fillRect(loopStartX, loopIndicatorY, loopEndX - loopStartX, loopIndicatorHeight)
     ctx.globalAlpha = 1
 
     // Loop region border
-    ctx.strokeStyle = noteActive
+    ctx.strokeStyle = loopMarkerColor
     ctx.lineWidth = 2
     ctx.strokeRect(loopStartX, loopIndicatorY, loopEndX - loopStartX, loopIndicatorHeight)
 
     // Loop start/end markers (small triangles)
-    ctx.fillStyle = noteActive
+    ctx.fillStyle = loopMarkerColor
     // Start marker
     ctx.beginPath()
     ctx.moveTo(loopStartX, loopIndicatorY + loopIndicatorHeight + 2)
@@ -217,6 +315,10 @@ export function Grid({
     ctx.lineTo(loopEndX - 5, loopIndicatorY + loopIndicatorHeight + 6)
     ctx.closePath()
     ctx.fill()
+
+    // Reset shadow for rest of drawing
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
 
     // Draw bar numbers in header
     ctx.fillStyle = textSecondary
@@ -300,7 +402,7 @@ export function Grid({
     >
       <canvas
         ref={canvasRef}
-        className="cursor-crosshair"
+        style={{ cursor: cursorStyle }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
