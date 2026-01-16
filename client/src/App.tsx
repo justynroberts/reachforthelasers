@@ -7,11 +7,16 @@ import { Catalog } from './components/Catalog/Catalog'
 import { ExportModal } from './components/Export/ExportModal'
 import { EffectsPanel } from './components/Effects/EffectsPanel'
 import { EditToolbar } from './components/EditToolbar/EditToolbar'
+import { Visualizer } from './components/Visualizer/Visualizer'
+import { ProductTour } from './components/Tour/ProductTour'
+import { AboutModal } from './components/About/AboutModal'
+import { TooltipProvider, TooltipBar, Tooltipped } from './components/Tooltip/TooltipBar'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { usePattern } from './hooks/usePattern'
 import { useTheme } from './hooks/useTheme'
-import { Music, Library, Sun, Moon, Trash2, Download, Zap } from 'lucide-react'
+import { Music, Library, Sun, Moon, Trash2, Download, Zap, HelpCircle, Info, SlidersHorizontal, ChevronRight } from 'lucide-react'
 import type { ScaleType, Note } from './types'
+import { STEPS_PER_BAR } from './types'
 import { SCALES } from './scales'
 
 type Tab = 'editor' | 'catalog'
@@ -19,6 +24,9 @@ type Tab = 'editor' | 'catalog'
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('editor')
   const [showExportModal, setShowExportModal] = useState(false)
+  const [showTour, setShowTour] = useState(true)
+  const [showAbout, setShowAbout] = useState(false)
+  const [showEffects, setShowEffects] = useState(true)
   const [centerTrigger, setCenterTrigger] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
@@ -49,8 +57,20 @@ export default function App() {
     duplicateSelection,
     loopSelection,
     clearSelection,
-    addOctaveDown
+    addOctaveDown,
+    nudgeLeft,
+    nudgeRight,
+    transposeUp,
+    transposeDown,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = usePattern()
+
+  // Convert bar selection to steps for loop boundaries
+  const loopStartStep = selectionStart * STEPS_PER_BAR
+  const loopEndStep = selectionEnd * STEPS_PER_BAR
 
   const {
     isPlaying,
@@ -63,8 +83,11 @@ export default function App() {
     setMetronomeEnabled,
     metronomeVolume,
     setMetronomeVolume,
+    metronomeType,
+    setMetronomeType,
     synthType,
     setSynthType,
+    applyPreset,
     // Filter
     filterEnabled,
     setFilterEnabled,
@@ -82,14 +105,35 @@ export default function App() {
     delayFeedback,
     setDelayFeedback,
     delayMix,
-    setDelayMix
-  } = useAudioEngine(pattern, tempo)
+    setDelayMix,
+    // Reverb
+    reverbEnabled,
+    setReverbEnabled,
+    reverbDecay,
+    setReverbDecay,
+    reverbMix,
+    setReverbMix
+  } = useAudioEngine(pattern, tempo, loopStartStep, loopEndStep)
 
   const handleLoadFromCatalog = useCallback((catalogPattern: {
     notes: Note[]
     scale: ScaleType
     rootNote: number
     tempo: number
+    soundSettings?: {
+      synthType: typeof synthType
+      filterEnabled: boolean
+      filterType: typeof filterType
+      filterFreq: number
+      filterQ: number
+      delayEnabled: boolean
+      delayTime: typeof delayTime
+      delayFeedback: number
+      delayMix: number
+      reverbEnabled: boolean
+      reverbDecay: number
+      reverbMix: number
+    }
   }) => {
     // Calculate the pitch range of the incoming notes
     const pitches = catalogPattern.notes.map(n => n.pitch)
@@ -99,7 +143,7 @@ export default function App() {
 
     // Get the total pitch count for this scale
     const scaleData = SCALES[catalogPattern.scale]
-    const pitchCount = scaleData.intervals.length * 5 // 5 octaves
+    const pitchCount = scaleData.intervals.length * 4 // 4 octaves (A2-A5)
 
     // Calculate offset to center notes in the middle of the range (octave 3-4)
     const gridCenter = pitchCount / 2
@@ -115,57 +159,106 @@ export default function App() {
       ...catalogPattern,
       notes: centeredNotes
     })
+
+    // Apply sound settings if present
+    if (catalogPattern.soundSettings) {
+      const s = catalogPattern.soundSettings
+      setSynthType(s.synthType)
+      setFilterEnabled(s.filterEnabled)
+      setFilterType(s.filterType)
+      setFilterFreq(s.filterFreq)
+      setFilterQ(s.filterQ)
+      setDelayEnabled(s.delayEnabled)
+      setDelayTime(s.delayTime)
+      setDelayFeedback(s.delayFeedback)
+      setDelayMix(s.delayMix)
+      setReverbEnabled(s.reverbEnabled)
+      setReverbDecay(s.reverbDecay)
+      setReverbMix(s.reverbMix)
+    }
+
     setActiveTab('editor')
     // Trigger centering on the loaded notes
     setCenterTrigger(prev => prev + 1)
-  }, [loadPattern])
+  }, [loadPattern, setSynthType, setFilterEnabled, setFilterType, setFilterFreq, setFilterQ,
+      setDelayEnabled, setDelayTime, setDelayFeedback, setDelayMix,
+      setReverbEnabled, setReverbDecay, setReverbMix])
 
   return (
+    <TooltipProvider>
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-grid-line">
-        <div className="flex items-center gap-3">
+      <header className="relative flex items-center justify-between px-6 py-4 border-b border-grid-line">
+        <Visualizer isPlaying={isPlaying} />
+        <div className="relative z-10 flex items-center gap-3">
           <Zap className="w-6 h-6 text-note-active" />
           <h1 className="text-xl font-bold text-white tracking-tight">
             Reach for the Lasers
           </h1>
         </div>
-        <nav className="flex items-center gap-3">
+        <nav className="relative z-10 flex items-center gap-3">
           <div className="flex gap-1 bg-grid-line p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('editor')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
-                activeTab === 'editor'
-                  ? 'bg-note-active text-grid-bg shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Music className="w-4 h-4" />
-              Create
-            </button>
-            <button
-              onClick={() => setActiveTab('catalog')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
-                activeTab === 'catalog'
-                  ? 'bg-note-active text-grid-bg shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Library className="w-4 h-4" />
-              Browse
-            </button>
+            <Tooltipped tip="Create and edit patterns">
+              <button
+                onClick={() => setActiveTab('editor')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                  activeTab === 'editor'
+                    ? 'bg-note-active text-grid-bg shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Music className="w-4 h-4" />
+                Create
+              </button>
+            </Tooltipped>
+            <Tooltipped tip="Browse preset and saved patterns">
+              <button
+                onClick={() => setActiveTab('catalog')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                  activeTab === 'catalog'
+                    ? 'bg-note-active text-grid-bg shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Library className="w-4 h-4" />
+                Browse
+              </button>
+            </Tooltipped>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-2.5 rounded-lg bg-grid-line hover:bg-grid-bar transition-colors"
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-yellow-400" />
-            ) : (
-              <Moon className="w-5 h-5 text-blue-400" />
-            )}
-          </button>
+          <Tooltipped tip={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-lg bg-grid-line hover:bg-grid-bar transition-colors"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-yellow-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-blue-400" />
+              )}
+            </button>
+          </Tooltipped>
+          <Tooltipped tip="Show product tour">
+            <button
+              onClick={() => {
+                localStorage.removeItem('reach-for-lasers-tour-complete')
+                setShowTour(true)
+              }}
+              className="p-2.5 rounded-lg bg-grid-line hover:bg-grid-bar transition-colors"
+              aria-label="Show tour"
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400" />
+            </button>
+          </Tooltipped>
+          <Tooltipped tip="About Reach for the Lasers">
+            <button
+              onClick={() => setShowAbout(true)}
+              className="p-2.5 rounded-lg bg-grid-line hover:bg-grid-bar transition-colors"
+              aria-label="About"
+            >
+              <Info className="w-5 h-5 text-gray-400" />
+            </button>
+          </Tooltipped>
         </nav>
       </header>
 
@@ -187,8 +280,10 @@ export default function App() {
                 onMetronomeChange={setMetronomeEnabled}
                 metronomeVolume={metronomeVolume}
                 onMetronomeVolumeChange={setMetronomeVolume}
+                metronomeType={metronomeType}
+                onMetronomeTypeChange={setMetronomeType}
                 synthType={synthType}
-                onSynthTypeChange={setSynthType}
+                onSynthTypeChange={applyPreset}
               />
               <div className="w-px h-8 bg-grid-line" />
               <ScaleSelector
@@ -199,43 +294,71 @@ export default function App() {
               />
               <div className="flex-1" />
               <div className="flex gap-2">
-                <button
-                  onClick={clearPattern}
-                  className="flex items-center gap-2 px-4 py-2 bg-grid-line text-gray-300 rounded-lg hover:bg-grid-bar transition-colors font-medium"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Clear
-                </button>
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-note-active text-grid-bg rounded-lg hover:opacity-90 transition-opacity font-medium shadow-lg"
-                >
-                  <Download className="w-4 h-4" />
-                  Export
-                </button>
+                <Tooltipped tip="Clear all notes from the pattern">
+                  <button
+                    onClick={clearPattern}
+                    className="flex items-center gap-2 px-4 py-2 bg-grid-line text-gray-300 rounded-lg hover:bg-grid-bar transition-colors font-medium"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear
+                  </button>
+                </Tooltipped>
+                <Tooltipped tip="Export pattern as MIDI or save to catalog">
+                  <button
+                    onClick={() => setShowExportModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-note-active text-grid-bg rounded-lg hover:opacity-90 transition-opacity font-medium shadow-lg"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export
+                  </button>
+                </Tooltipped>
               </div>
             </div>
 
             {/* Effects & Edit Bar */}
-            <div className="flex items-center justify-between gap-6 px-6 py-3 border-b border-grid-line bg-grid-bg/50">
-              <EffectsPanel
-                filterEnabled={filterEnabled}
-                onFilterEnabledChange={setFilterEnabled}
-                filterType={filterType}
-                onFilterTypeChange={setFilterType}
-                filterFreq={filterFreq}
-                onFilterFreqChange={setFilterFreq}
-                filterQ={filterQ}
-                onFilterQChange={setFilterQ}
-                delayEnabled={delayEnabled}
-                onDelayEnabledChange={setDelayEnabled}
-                delayTime={delayTime}
-                onDelayTimeChange={setDelayTime}
-                delayFeedback={delayFeedback}
-                onDelayFeedbackChange={setDelayFeedback}
-                delayMix={delayMix}
-                onDelayMixChange={setDelayMix}
-              />
+            <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-grid-line bg-grid-bg/50">
+              <div className="flex items-center gap-4">
+                <Tooltipped tip={showEffects ? "Hide effects" : "Show effects"}>
+                  <button
+                    onClick={() => setShowEffects(!showEffects)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      showEffects
+                        ? 'bg-note-active/20 text-note-active'
+                        : 'bg-grid-line text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span className="text-sm">FX</span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${showEffects ? 'rotate-90' : ''}`} />
+                  </button>
+                </Tooltipped>
+                {showEffects && (
+                  <EffectsPanel
+                    filterEnabled={filterEnabled}
+                    onFilterEnabledChange={setFilterEnabled}
+                    filterType={filterType}
+                    onFilterTypeChange={setFilterType}
+                    filterFreq={filterFreq}
+                    onFilterFreqChange={setFilterFreq}
+                    filterQ={filterQ}
+                    onFilterQChange={setFilterQ}
+                    delayEnabled={delayEnabled}
+                    onDelayEnabledChange={setDelayEnabled}
+                    delayTime={delayTime}
+                    onDelayTimeChange={setDelayTime}
+                    delayFeedback={delayFeedback}
+                    onDelayFeedbackChange={setDelayFeedback}
+                    delayMix={delayMix}
+                    onDelayMixChange={setDelayMix}
+                    reverbEnabled={reverbEnabled}
+                    onReverbEnabledChange={setReverbEnabled}
+                    reverbDecay={reverbDecay}
+                    onReverbDecayChange={setReverbDecay}
+                    reverbMix={reverbMix}
+                    onReverbMixChange={setReverbMix}
+                  />
+                )}
+              </div>
               <EditToolbar
                 selectionStart={selectionStart}
                 selectionEnd={selectionEnd}
@@ -248,6 +371,14 @@ export default function App() {
                 onLoop={loopSelection}
                 onClearSelection={clearSelection}
                 onOctaveDown={addOctaveDown}
+                onNudgeLeft={nudgeLeft}
+                onNudgeRight={nudgeRight}
+                onTransposeUp={transposeUp}
+                onTransposeDown={transposeDown}
+                onUndo={undo}
+                onRedo={redo}
+                canUndo={canUndo}
+                canRedo={canRedo}
               />
             </div>
 
@@ -270,6 +401,9 @@ export default function App() {
                 onNotesChange={setNotes}
                 centerTrigger={centerTrigger}
                 scrollContainerRef={scrollContainerRef}
+                theme={theme}
+                loopStartStep={loopStartStep}
+                loopEndStep={loopEndStep}
               />
             </div>
           </div>
@@ -285,9 +419,37 @@ export default function App() {
           scale={scale}
           rootNote={rootNote}
           tempo={tempo}
+          soundSettings={{
+            synthType,
+            filterEnabled,
+            filterType,
+            filterFreq,
+            filterQ,
+            delayEnabled,
+            delayTime,
+            delayFeedback,
+            delayMix,
+            reverbEnabled,
+            reverbDecay,
+            reverbMix
+          }}
           onClose={() => setShowExportModal(false)}
         />
       )}
+
+      {/* About Modal */}
+      {showAbout && (
+        <AboutModal onClose={() => setShowAbout(false)} />
+      )}
+
+      {/* Product Tour */}
+      {showTour && (
+        <ProductTour onComplete={() => setShowTour(false)} />
+      )}
+
+      {/* Tooltip Bar */}
+      <TooltipBar />
     </div>
+    </TooltipProvider>
   )
 }

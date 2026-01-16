@@ -2,6 +2,7 @@ import { Music2 } from 'lucide-react'
 import type { ScaleType } from '../../types'
 import { NOTE_NAMES } from '../../types'
 import { SCALES } from '../../scales'
+import { useTooltip } from '../Tooltip/TooltipBar'
 
 interface ScaleSelectorProps {
   scale: ScaleType
@@ -49,10 +50,17 @@ export function ScaleSelector({
     onRootNoteChange(newMidi)
   }
 
+  const { setTooltip } = useTooltip()
+
+  const tip = (text: string) => ({
+    onMouseEnter: () => setTooltip(text),
+    onMouseLeave: () => setTooltip('')
+  })
+
   return (
     <div className="flex items-center gap-4">
       {/* Scale Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...tip('Select musical scale for the grid')}>
         <Music2 className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-medium text-gray-400">Scale</span>
         <select
@@ -69,7 +77,7 @@ export function ScaleSelector({
       </div>
 
       {/* Root Note Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...tip('Set root note (tonic) of the scale')}>
         <span className="text-sm font-medium text-gray-400">Key</span>
         <select
           value={rootPitch}
@@ -85,7 +93,7 @@ export function ScaleSelector({
       </div>
 
       {/* Octave Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...tip('Set base octave for the pattern')}>
         <span className="text-sm font-medium text-gray-400">Octave</span>
         <select
           value={octave}

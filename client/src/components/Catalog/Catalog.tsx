@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { CatalogPattern, ScaleType, Note, Tag } from '../../types'
 import { TAGS } from '../../types'
 import { SCALES } from '../../scales'
+import { PRESETS } from '../../presets'
 import { SaveModal } from './SaveModal'
+import type { SoundSettings } from '../Export/ExportModal'
 
 interface CatalogProps {
   onLoadPattern: (pattern: {
@@ -10,19 +12,76 @@ interface CatalogProps {
     scale: ScaleType
     rootNote: number
     tempo: number
+    soundSettings?: SoundSettings
   }) => void
 }
 
 type SortOption = 'newest' | 'mostLoaded' | 'random'
 
+const CATALOG_STORAGE_KEY = 'reach-for-lasers-user-patterns'
+
+// Generate built-in patterns from presets
+function generateBuiltInPatterns(): CatalogPattern[] {
+  return PRESETS.map((preset, index) => {
+    const scaleData = SCALES[preset.recommendedScale]
+    const stepsPerOctave = scaleData.intervals.length
+    const notes = preset.generate({ stepsPerOctave, octaves: 4 })
+
+    return {
+      id: `preset-${index}`,
+      name: preset.name,
+      description: preset.description,
+      notes,
+      scale: preset.recommendedScale,
+      rootNote: 45, // A2
+      tempo: preset.suggestedTempo,
+      tags: [preset.complexity === 'simple' ? 'Simple' : preset.complexity === 'complex' ? 'Complex' : 'Melodic'] as Tag[],
+      createdAt: new Date().toISOString(),
+      loadCount: 0
+    }
+  })
+}
+
+// Load user-saved patterns from localStorage
+function loadUserPatterns(): (CatalogPattern & { soundSettings?: SoundSettings })[] {
+  try {
+    const stored = localStorage.getItem(CATALOG_STORAGE_KEY)
+    if (!stored) return []
+    const patterns = JSON.parse(stored)
+    return patterns.map((p: { id: string; name: string; notes: Note[]; scale: ScaleType; rootNote: number; tempo: number; soundSettings?: SoundSettings; createdAt: string }) => ({
+      ...p,
+      description: 'User created pattern',
+      tags: ['User'] as Tag[],
+      loadCount: 0
+    }))
+  } catch {
+    return []
+  }
+}
+
 export function Catalog({ onLoadPattern }: CatalogProps) {
   const [patterns, setPatterns] = useState<CatalogPattern[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('newest')
   const [selectedTags, setSelectedTags] = useState<Tag[]>([])
   const [showSaveModal, setShowSaveModal] = useState(false)
+
+  // Built-in presets
+  const builtInPatterns = useMemo(() => generateBuiltInPatterns(), [])
+
+  // User-saved patterns from localStorage
+  const [userPatterns, setUserPatterns] = useState<CatalogPattern[]>([])
+
+  // Refresh user patterns when catalog opens or after save
+  const refreshUserPatterns = useCallback(() => {
+    setUserPatterns(loadUserPatterns())
+  }, [])
+
+  useEffect(() => {
+    refreshUserPatterns()
+  }, [refreshUserPatterns])
 
   const fetchPatterns = useCallback(async () => {
     setLoading(true)
@@ -39,8 +98,9 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
 
       const data = await response.json()
       setPatterns(data.patterns)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+    } catch {
+      // Server not running - use built-in patterns only
+      setPatterns([])
     } finally {
       setLoading(false)
     }
@@ -50,7 +110,19 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
     fetchPatterns()
   }, [fetchPatterns])
 
-  const handleLoad = async (pattern: CatalogPattern) => {
+  // Combine user, built-in and server patterns, filter by search
+  const allPatterns = useMemo(() => {
+    // User patterns first, then built-in, then server
+    const combined = [...userPatterns, ...builtInPatterns, ...patterns]
+    if (!search) return combined
+    const searchLower = search.toLowerCase()
+    return combined.filter(p =>
+      p.name.toLowerCase().includes(searchLower) ||
+      p.description.toLowerCase().includes(searchLower)
+    )
+  }, [userPatterns, builtInPatterns, patterns, search])
+
+  const handleLoad = async (pattern: CatalogPattern & { soundSettings?: SoundSettings }) => {
     // Increment load count
     try {
       await fetch(`/api/patterns/${pattern.id}/load`, { method: 'POST' })
@@ -62,7 +134,8 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
       notes: pattern.notes,
       scale: pattern.scale,
       rootNote: pattern.rootNote,
-      tempo: pattern.tempo
+      tempo: pattern.tempo,
+      soundSettings: pattern.soundSettings
     })
   }
 
@@ -125,15 +198,13 @@ export function Catalog({ onLoadPattern }: CatalogProps) {
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="text-center text-gray-400 py-8">Loading patterns...</div>
-        ) : error ? (
-          <div className="text-center text-red-400 py-8">{error}</div>
-        ) : patterns.length === 0 ? (
+        ) : allPatterns.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
-            No patterns found. Be the first to save one!
+            No patterns found. Try a different search.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {patterns.map(pattern => (
+            {allPatterns.map(pattern => (
               <PatternCard
                 key={pattern.id}
                 pattern={pattern}

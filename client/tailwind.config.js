@@ -7,12 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        'grid-bg': '#0a0a0f',
-        'grid-line': '#1a1a2e',
-        'grid-bar': '#2d2d44',
-        'note-active': '#00d4ff',
-        'note-accent': '#ff00aa',
-        'playhead': '#ffff00',
+        'grid-bg': 'var(--bg-primary)',
+        'grid-line': 'var(--bg-secondary)',
+        'grid-bar': 'var(--bg-tertiary)',
+        'note-active': 'var(--note-active)',
+        'note-accent': 'var(--note-accent)',
+        'playhead': 'var(--playhead)',
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],

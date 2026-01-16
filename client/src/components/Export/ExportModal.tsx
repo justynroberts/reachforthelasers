@@ -1,30 +1,70 @@
 import { useState } from 'react'
 import { Midi } from '@tonejs/midi'
-import type { Pattern, ScaleType } from '../../types'
+import type { Pattern, ScaleType, SynthType, FilterType, DelayTime } from '../../types'
+import { NOTE_NAMES } from '../../types'
 import { SCALES, scaleDegreeToMidi } from '../../scales'
+
+export interface SoundSettings {
+  synthType: SynthType
+  filterEnabled: boolean
+  filterType: FilterType
+  filterFreq: number
+  filterQ: number
+  delayEnabled: boolean
+  delayTime: DelayTime
+  delayFeedback: number
+  delayMix: number
+  reverbEnabled: boolean
+  reverbDecay: number
+  reverbMix: number
+}
 
 interface ExportModalProps {
   pattern: Pattern
   scale: ScaleType
   rootNote: number
   tempo: number
+  soundSettings: SoundSettings
   onClose: () => void
 }
 
 type VelocityCurve = 'as-is' | 'compress' | 'expand' | 'humanize'
 type NoteLengthOption = 'as-programmed' | 'legato' | 'staccato'
 
+const CATALOG_STORAGE_KEY = 'reach-for-lasers-user-patterns'
+
+export interface SavedPattern {
+  id: string
+  name: string
+  notes: Pattern['notes']
+  scale: ScaleType
+  rootNote: number
+  tempo: number
+  soundSettings?: SoundSettings
+  createdAt: string
+}
+
+function savePatternToCatalog(pattern: SavedPattern) {
+  const existing = localStorage.getItem(CATALOG_STORAGE_KEY)
+  const patterns: SavedPattern[] = existing ? JSON.parse(existing) : []
+  patterns.unshift(pattern)
+  localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(patterns))
+}
+
 export function ExportModal({
   pattern,
   scale,
   rootNote,
   tempo,
+  soundSettings,
   onClose
 }: ExportModalProps) {
   const [channel, setChannel] = useState(1)
   const [velocityCurve, setVelocityCurve] = useState<VelocityCurve>('as-is')
   const [includeTempo, setIncludeTempo] = useState(true)
   const [noteLength, setNoteLength] = useState<NoteLengthOption>('as-programmed')
+  const [saveToCatalog, setSaveToCatalog] = useState(true)
+  const [patternName, setPatternName] = useState('')
 
   const handleExport = () => {
     const midi = new Midi()
@@ -89,6 +129,20 @@ export function ExportModal({
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+
+    // Save to catalog if enabled
+    if (saveToCatalog && patternName.trim()) {
+      savePatternToCatalog({
+        id: `user-${Date.now()}`,
+        name: patternName.trim(),
+        notes: pattern.notes,
+        scale,
+        rootNote,
+        tempo,
+        soundSettings,
+        createdAt: new Date().toISOString()
+      })
+    }
 
     onClose()
   }
@@ -174,6 +228,31 @@ export function ExportModal({
             </label>
           </div>
 
+          {/* Save to Catalog */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="saveToCatalog"
+                checked={saveToCatalog}
+                onChange={e => setSaveToCatalog(e.target.checked)}
+                className="rounded border-grid-bar bg-grid-line"
+              />
+              <label htmlFor="saveToCatalog" className="text-sm text-gray-400">
+                Save to catalog
+              </label>
+            </div>
+            {saveToCatalog && (
+              <input
+                type="text"
+                value={patternName}
+                onChange={e => setPatternName(e.target.value)}
+                placeholder="Pattern name..."
+                className="w-full px-3 py-2 bg-grid-line border border-grid-bar rounded text-sm"
+              />
+            )}
+          </div>
+
           {/* Preview info */}
           <div className="bg-grid-line rounded p-3 text-sm text-gray-400">
             <div className="flex justify-between mb-1">
@@ -183,6 +262,10 @@ export function ExportModal({
             <div className="flex justify-between mb-1">
               <span>Scale:</span>
               <span>{SCALES[scale].name}</span>
+            </div>
+            <div className="flex justify-between mb-1">
+              <span>Key:</span>
+              <span>{NOTE_NAMES[rootNote % 12]}{Math.floor(rootNote / 12) - 1}</span>
             </div>
             <div className="flex justify-between">
               <span>Tempo:</span>

@@ -13,6 +13,9 @@ interface GridProps {
   onNotesChange: (notes: Note[]) => void
   centerTrigger?: number // Increment to trigger auto-centering on notes
   scrollContainerRef?: React.RefObject<HTMLDivElement> // External scroll container
+  theme?: string // Theme for redraw trigger
+  loopStartStep?: number // Loop start position in steps
+  loopEndStep?: number // Loop end position in steps
 }
 
 const CELL_WIDTH = 24
@@ -29,6 +32,9 @@ export function Grid({
   onToggleNote,
   centerTrigger,
   scrollContainerRef,
+  theme,
+  loopStartStep = 0,
+  loopEndStep = 64,
 }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -144,6 +150,17 @@ export function Grid({
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
 
+    // Read theme colors from CSS variables
+    const styles = getComputedStyle(document.documentElement)
+    const bgPrimary = styles.getPropertyValue('--bg-primary').trim() || '#0a0a0f'
+    const bgSecondary = styles.getPropertyValue('--bg-secondary').trim() || '#1a1a2e'
+    const bgTertiary = styles.getPropertyValue('--bg-tertiary').trim() || '#2d2d44'
+    const textMuted = styles.getPropertyValue('--text-muted').trim() || '#6b7280'
+    const textSecondary = styles.getPropertyValue('--text-secondary').trim() || '#9ca3af'
+    const noteActive = styles.getPropertyValue('--note-active').trim() || '#00d4ff'
+    const noteAccent = styles.getPropertyValue('--note-accent').trim() || '#ff00aa'
+    const playheadColor = styles.getPropertyValue('--playhead').trim() || '#ffff00'
+
     const dpr = window.devicePixelRatio || 1
     canvas.width = (gridWidth + PITCH_LABEL_WIDTH) * dpr
     canvas.height = (gridHeight + HEADER_HEIGHT) * dpr
@@ -152,12 +169,12 @@ export function Grid({
     ctx.scale(dpr, dpr)
 
     // Clear
-    ctx.fillStyle = '#0a0a0f'
+    ctx.fillStyle = bgPrimary
     ctx.fillRect(0, 0, gridWidth + PITCH_LABEL_WIDTH, gridHeight + HEADER_HEIGHT)
 
     // Draw pitch labels
-    ctx.fillStyle = '#6b7280'
-    ctx.font = '11px JetBrains Mono'
+    ctx.fillStyle = textMuted
+    ctx.font = '11px Outfit, sans-serif'
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
 
@@ -167,16 +184,50 @@ export function Grid({
       ctx.fillText(midiToNoteName(midiNote), PITCH_LABEL_WIDTH - 8, y)
     }
 
+    // Draw loop indicator in header
+    const loopStartX = PITCH_LABEL_WIDTH + loopStartStep * CELL_WIDTH
+    const loopEndX = PITCH_LABEL_WIDTH + loopEndStep * CELL_WIDTH
+    const loopIndicatorHeight = 6
+    const loopIndicatorY = 4
+
+    // Loop region background
+    ctx.fillStyle = noteActive
+    ctx.globalAlpha = 0.3
+    ctx.fillRect(loopStartX, loopIndicatorY, loopEndX - loopStartX, loopIndicatorHeight)
+    ctx.globalAlpha = 1
+
+    // Loop region border
+    ctx.strokeStyle = noteActive
+    ctx.lineWidth = 2
+    ctx.strokeRect(loopStartX, loopIndicatorY, loopEndX - loopStartX, loopIndicatorHeight)
+
+    // Loop start/end markers (small triangles)
+    ctx.fillStyle = noteActive
+    // Start marker
+    ctx.beginPath()
+    ctx.moveTo(loopStartX, loopIndicatorY + loopIndicatorHeight + 2)
+    ctx.lineTo(loopStartX + 5, loopIndicatorY + loopIndicatorHeight + 6)
+    ctx.lineTo(loopStartX - 5, loopIndicatorY + loopIndicatorHeight + 6)
+    ctx.closePath()
+    ctx.fill()
+    // End marker
+    ctx.beginPath()
+    ctx.moveTo(loopEndX, loopIndicatorY + loopIndicatorHeight + 2)
+    ctx.lineTo(loopEndX + 5, loopIndicatorY + loopIndicatorHeight + 6)
+    ctx.lineTo(loopEndX - 5, loopIndicatorY + loopIndicatorHeight + 6)
+    ctx.closePath()
+    ctx.fill()
+
     // Draw bar numbers in header
-    ctx.fillStyle = '#9ca3af'
+    ctx.fillStyle = textSecondary
     ctx.textAlign = 'center'
     for (let bar = 0; bar < 16; bar++) {
       const x = PITCH_LABEL_WIDTH + bar * STEPS_PER_BAR * CELL_WIDTH + (STEPS_PER_BAR * CELL_WIDTH) / 2
-      ctx.fillText(`${bar + 1}`, x, HEADER_HEIGHT / 2)
+      ctx.fillText(`${bar + 1}`, x, HEADER_HEIGHT - 6)
     }
 
     // Draw grid lines
-    ctx.strokeStyle = '#1a1a2e'
+    ctx.strokeStyle = bgSecondary
     ctx.lineWidth = 1
 
     // Horizontal lines
@@ -194,7 +245,7 @@ export function Grid({
       const isBar = i % STEPS_PER_BAR === 0
       const isBeat = i % 4 === 0
 
-      ctx.strokeStyle = isBar ? '#3d3d5c' : isBeat ? '#2d2d44' : '#1a1a2e'
+      ctx.strokeStyle = isBar ? textMuted : isBeat ? bgTertiary : bgSecondary
       ctx.lineWidth = isBar ? 2 : 1
 
       ctx.beginPath()
@@ -208,35 +259,38 @@ export function Grid({
       const x = PITCH_LABEL_WIDTH + note.step * CELL_WIDTH
       const y = HEADER_HEIGHT + (pitchCount - 1 - note.pitch) * CELL_HEIGHT
 
-      ctx.fillStyle = note.accent ? '#ff00aa' : '#00d4ff'
+      ctx.fillStyle = note.accent ? noteAccent : noteActive
       ctx.fillRect(x + 1, y + 1, CELL_WIDTH - 2, CELL_HEIGHT - 2)
 
       // Draw note length indicator if > 1
       if (note.length > 1) {
-        ctx.fillStyle = note.accent ? '#cc0088' : '#00a8cc'
+        ctx.globalAlpha = 0.7
         ctx.fillRect(
           x + CELL_WIDTH - 2,
           y + 1,
           (note.length - 1) * CELL_WIDTH,
           CELL_HEIGHT - 2
         )
+        ctx.globalAlpha = 1
       }
     }
 
     // Draw playhead
     if (currentStep >= 0 && isPlaying) {
       const x = PITCH_LABEL_WIDTH + currentStep * CELL_WIDTH
-      ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'
+      ctx.fillStyle = playheadColor
+      ctx.globalAlpha = 0.3
       ctx.fillRect(x, HEADER_HEIGHT, CELL_WIDTH, gridHeight)
+      ctx.globalAlpha = 1
 
-      ctx.strokeStyle = '#ffff00'
+      ctx.strokeStyle = playheadColor
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(x, HEADER_HEIGHT)
       ctx.lineTo(x, HEADER_HEIGHT + gridHeight)
       ctx.stroke()
     }
-  }, [notes, scaleNotes, pitchCount, gridWidth, gridHeight, currentStep, isPlaying])
+  }, [notes, scaleNotes, pitchCount, gridWidth, gridHeight, currentStep, isPlaying, theme, loopStartStep, loopEndStep])
 
   return (
     <div

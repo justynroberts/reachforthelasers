@@ -48,6 +48,7 @@ export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A',
 export type NoteName = typeof NOTE_NAMES[number]
 
 export const TAGS = [
+  'User',
   'Uplifting', 'Progressive', 'Psytrance', 'Tech-Trance', 'Goa',
   'Lead', 'Bass', 'Arp', 'Pad-Rhythm', 'FX',
   'Simple', 'Complex', 'Rolling', 'Sparse', 'Melodic'
@@ -64,7 +65,7 @@ export const DEFAULT_TEMPO = 138
 export const MIN_TEMPO = 120
 export const MAX_TEMPO = 160
 
-export const OCTAVE_RANGE = 5  // Number of octaves to display (covers 1st to 5th)
+export const OCTAVE_RANGE = 4  // Number of octaves to display (A2-A5)
 export const MIN_ROOT_OCTAVE = 1  // Lowest octave for root note selection
 export const MAX_ROOT_OCTAVE = 5  // Highest octave for root note selection
 
@@ -91,15 +92,21 @@ export const CHORD_DURATIONS = [
 export const MIN_CHORD_DURATION = 4 // Quarter bar minimum
 
 // Synth sound types
-export type SynthType = 'saw' | 'square' | 'sine' | 'triangle' | 'pluck' | 'fm'
+export type SynthType =
+  | 'saw' | 'supersaw'
+  | 'pluck' | 'stab'
+  | 'acid' | 'acidBright' | 'acidDark' | 'acidSquare' | 'acidSoft'
 
 export const SYNTH_TYPES: { value: SynthType; label: string }[] = [
   { value: 'saw', label: 'Saw' },
-  { value: 'square', label: 'Square' },
-  { value: 'sine', label: 'Sine' },
-  { value: 'triangle', label: 'Triangle' },
+  { value: 'supersaw', label: 'Supersaw' },
   { value: 'pluck', label: 'Pluck' },
-  { value: 'fm', label: 'FM' },
+  { value: 'stab', label: 'Stab' },
+  { value: 'acid', label: 'Acid' },
+  { value: 'acidBright', label: 'Acid Bright' },
+  { value: 'acidDark', label: 'Acid Dark' },
+  { value: 'acidSquare', label: 'Acid Square' },
+  { value: 'acidSoft', label: 'Acid Soft' },
 ]
 
 // Filter types

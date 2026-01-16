@@ -10,227 +10,308 @@ export interface Preset {
   generate: (options: { stepsPerOctave: number; octaves: number }) => Note[]
 }
 
-function createNote(step: number, pitch: number, velocity = DEFAULT_VELOCITY, length = 1, accent = false): Note {
+function n(step: number, pitch: number, velocity = DEFAULT_VELOCITY, length = 1, accent = false): Note {
   return { step, pitch, velocity, length, accent }
 }
 
+// Helper to repeat a bar pattern across multiple bars
+function repeatBars(barPattern: Note[], bars: number, stepsPerBar = 16): Note[] {
+  const notes: Note[] = []
+  for (let bar = 0; bar < bars; bar++) {
+    barPattern.forEach(note => {
+      notes.push({ ...note, step: note.step + bar * stepsPerBar })
+    })
+  }
+  return notes
+}
+
 export const PRESETS: Preset[] = [
+  // === ROLLING PATTERNS ===
   {
-    name: 'Classic Uplifter',
-    description: 'Rising 2-octave sequence with octave jumps',
-    suggestedTempo: 138,
-    recommendedScale: 'harmonicMinor',
-    complexity: 'medium',
-    generate: ({ stepsPerOctave }) => {
-      const notes: Note[] = []
-      for (let bar = 0; bar < 16; bar++) {
-        for (let beat = 0; beat < 4; beat++) {
-          const step = bar * 16 + beat * 4
-          const pitch = (bar % 2) * stepsPerOctave + beat
-          notes.push(createNote(step, pitch, 100, 1, beat === 0))
-          notes.push(createNote(step + 1, pitch + 2))
-          notes.push(createNote(step + 2, pitch + 4))
-          notes.push(createNote(step + 3, pitch + stepsPerOctave))
-        }
-      }
-      return notes
-    }
-  },
-  {
-    name: 'Gater',
-    description: 'Rhythmic gate pattern with gaps',
+    name: 'Rolling 16ths',
+    description: 'Classic rolling 16th notes - root and octave',
     suggestedTempo: 140,
     recommendedScale: 'minor',
     complexity: 'simple',
     generate: ({ stepsPerOctave }) => {
-      const notes: Note[] = []
-      const pattern = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1]
-      for (let bar = 0; bar < 16; bar++) {
-        const basePitch = (bar % 4) * 2
-        for (let i = 0; i < 16; i++) {
-          if (pattern[i]) {
-            const pitch = basePitch + (i % 2 === 0 ? 0 : stepsPerOctave)
-            notes.push(createNote(bar * 16 + i, pitch, 90 + (i === 0 ? 20 : 0)))
-          }
-        }
+      // Root-root-octave-root pattern on 16ths
+      const bar: Note[] = []
+      for (let i = 0; i < 16; i++) {
+        const pitch = i % 4 === 2 ? stepsPerOctave : 0
+        const vel = i % 4 === 0 ? 110 : i % 2 === 0 ? 95 : 80
+        bar.push(n(i, pitch, vel, 1, i === 0))
       }
-      return notes
+      return repeatBars(bar, 16)
     }
   },
   {
-    name: 'Trancer',
-    description: 'Root-fifth-octave bounce - classic trance arp',
+    name: 'Rolling Thirds',
+    description: 'Rolling pattern with root and third',
     suggestedTempo: 138,
-    recommendedScale: 'harmonicMinor',
+    recommendedScale: 'minor',
+    complexity: 'simple',
+    generate: () => {
+      const third = 2
+      // Root-third alternating pattern
+      const bar: Note[] = []
+      for (let i = 0; i < 16; i++) {
+        const pitch = i % 2 === 0 ? 0 : third
+        const vel = i % 4 === 0 ? 110 : 85
+        bar.push(n(i, pitch, vel, 1, i === 0))
+      }
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Fifths',
+    description: 'Driving root-fifth rolling pattern',
+    suggestedTempo: 140,
+    recommendedScale: 'minor',
+    complexity: 'simple',
+    generate: () => {
+      const fifth = 4
+      // Root-root-fifth-root continuous pattern
+      const pattern = [0, 0, fifth, 0, 0, fifth, 0, fifth, 0, 0, fifth, 0, fifth, 0, fifth, 0]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 110 : i % 2 === 0 ? 95 : 80, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Arp',
+    description: '16th note arpeggio rolling pattern',
+    suggestedTempo: 138,
+    recommendedScale: 'minor',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      const third = 2
+      const fifth = 4
+      // 1-3-5-8 repeating on 16ths
+      const pattern = [0, third, fifth, stepsPerOctave]
+      const bar: Note[] = []
+      for (let i = 0; i < 16; i++) {
+        bar.push(n(i, pattern[i % 4], i % 4 === 0 ? 105 : 85, 1, i === 0))
+      }
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Octaves',
+    description: 'Hypnotic octave jumps on 16ths',
+    suggestedTempo: 142,
+    recommendedScale: 'minor',
     complexity: 'simple',
     generate: ({ stepsPerOctave }) => {
-      const notes: Note[] = []
-      // Root (0), fifth (4 in most scales), octave (stepsPerOctave)
-      const fifth = Math.floor(stepsPerOctave * 4 / 7) // Approximate fifth
-      const bouncePattern = [0, fifth, stepsPerOctave, fifth]
-
-      for (let bar = 0; bar < 16; bar++) {
-        const variation = Math.floor(bar / 4) % 2
-        for (let beat = 0; beat < 4; beat++) {
-          for (let sub = 0; sub < 4; sub++) {
-            const step = bar * 16 + beat * 4 + sub
-            const pitch = bouncePattern[sub] + variation * 2
-            notes.push(createNote(step, pitch, beat === 0 && sub === 0 ? 110 : 90))
-          }
-        }
-      }
-      return notes
+      // Low-low-high-low pattern
+      const pattern = [0, 0, stepsPerOctave, 0, 0, 0, stepsPerOctave, stepsPerOctave,
+                       0, 0, stepsPerOctave, 0, stepsPerOctave, 0, stepsPerOctave, 0]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 115 : pitch === stepsPerOctave ? 100 : 85, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
     }
   },
   {
-    name: 'Psy Roll',
-    description: 'Psytrance rolling pattern with subtle variation',
+    name: 'Rolling Acid',
+    description: '303-style rolling acid line',
+    suggestedTempo: 140,
+    recommendedScale: 'phrygian',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      // Acid pattern with slides implied by velocity
+      const pattern = [0, 0, stepsPerOctave, 0, 1, 0, stepsPerOctave, 1,
+                       0, 2, 0, stepsPerOctave, 0, 1, 2, 0]
+      const accents = [0, 2, 4, 6, 8, 10, 12, 14]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, accents.includes(i) ? 120 : 75, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Groove',
+    description: 'Syncopated rolling groove',
+    suggestedTempo: 138,
+    recommendedScale: 'minor',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      const fifth = 4
+      // Groove with syncopation
+      const pattern = [0, fifth, 0, stepsPerOctave, fifth, 0, stepsPerOctave, 0,
+                       fifth, 0, stepsPerOctave, fifth, 0, stepsPerOctave, 0, fifth]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 110 : i % 2 === 0 ? 90 : 75, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Tension',
+    description: 'Building tension with minor second',
+    suggestedTempo: 142,
+    recommendedScale: 'phrygianDominant',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      // Dark pattern with minor 2nd for tension
+      const pattern = [0, 0, 1, 0, 0, 1, 0, stepsPerOctave,
+                       0, 1, 0, 0, 1, 0, stepsPerOctave, 0]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 115 : pitch === 1 ? 100 : 80, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Wide',
+    description: 'Wide interval rolling pattern',
+    suggestedTempo: 140,
+    recommendedScale: 'minor',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      const fifth = 4
+      // Root to high octave+fifth jumps
+      const highFifth = stepsPerOctave + fifth
+      const pattern = [0, fifth, 0, stepsPerOctave, 0, highFifth, 0, stepsPerOctave,
+                       0, fifth, stepsPerOctave, 0, highFifth, stepsPerOctave, fifth, 0]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 110 : pitch >= stepsPerOctave ? 95 : 80, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Psy',
+    description: 'Psytrance-style rolling bassline',
     suggestedTempo: 145,
     recommendedScale: 'phrygianDominant',
-    complexity: 'complex',
-    generate: ({ stepsPerOctave }) => {
+    complexity: 'simple',
+    generate: () => {
+      // Pure root note driving psytrance bass
       const notes: Note[] = []
       for (let bar = 0; bar < 16; bar++) {
-        const barOffset = bar % 4
         for (let i = 0; i < 16; i++) {
-          const pitch = ((i + barOffset) % 3) + (Math.floor(i / 4) % 2) * stepsPerOctave
-          const velocity = 85 + (i % 4 === 0 ? 20 : 0) + (i === 0 ? 10 : 0)
-          notes.push(createNote(bar * 16 + i, pitch, velocity))
+          const vel = i % 4 === 0 ? 120 : i % 2 === 0 ? 100 : 85
+          notes.push(n(bar * 16 + i, 0, vel, 1, i === 0))
         }
       }
       return notes
     }
   },
   {
-    name: 'Chord Stab',
-    description: 'Power chord rhythm on downbeats',
-    suggestedTempo: 136,
+    name: 'Rolling Morph',
+    description: 'Morphing pattern that evolves',
+    suggestedTempo: 138,
     recommendedScale: 'minor',
-    complexity: 'simple',
-    generate: ({ stepsPerOctave }) => {
-      const notes: Note[] = []
-      const fifth = Math.floor(stepsPerOctave * 4 / 7)
-
-      for (let bar = 0; bar < 16; bar++) {
-        const baseOffset = (bar % 4) * 1
-        // Hit on 1 and 3
-        for (const beat of [0, 8]) {
-          const step = bar * 16 + beat
-          notes.push(createNote(step, baseOffset, 110, 2, true)) // Root
-          notes.push(createNote(step, baseOffset + fifth, 100, 2)) // Fifth
-          notes.push(createNote(step, baseOffset + stepsPerOctave, 95, 2)) // Octave
-        }
-      }
-      return notes
-    }
-  },
-  {
-    name: 'Elevator',
-    description: 'Continuous ascending sequence that wraps',
-    suggestedTempo: 140,
-    recommendedScale: 'melodicMinor',
-    complexity: 'medium',
-    generate: ({ stepsPerOctave, octaves }) => {
-      const notes: Note[] = []
-      const totalPitches = stepsPerOctave * octaves
-      for (let i = 0; i < 256; i++) {
-        const pitch = i % totalPitches
-        notes.push(createNote(i, pitch, 90 + (i % 16 === 0 ? 20 : 0)))
-      }
-      return notes
-    }
-  },
-  {
-    name: 'Waterfall',
-    description: 'Continuous descending sequence that wraps',
-    suggestedTempo: 140,
-    recommendedScale: 'harmonicMinor',
-    complexity: 'medium',
-    generate: ({ stepsPerOctave, octaves }) => {
-      const notes: Note[] = []
-      const totalPitches = stepsPerOctave * octaves
-      for (let i = 0; i < 256; i++) {
-        const pitch = (totalPitches - 1) - (i % totalPitches)
-        notes.push(createNote(i, pitch, 90 + (i % 16 === 0 ? 20 : 0)))
-      }
-      return notes
-    }
-  },
-  {
-    name: 'Pendulum',
-    description: 'Up-down oscillation between ranges',
-    suggestedTempo: 138,
-    recommendedScale: 'dorian',
-    complexity: 'medium',
-    generate: ({ stepsPerOctave }) => {
-      const notes: Note[] = []
-      const range = stepsPerOctave + 4
-      for (let bar = 0; bar < 16; bar++) {
-        for (let i = 0; i < 16; i++) {
-          const step = bar * 16 + i
-          // Ping pong within range
-          const pos = (step % (range * 2))
-          const pitch = pos < range ? pos : (range * 2 - pos - 1)
-          notes.push(createNote(step, pitch, i === 0 ? 110 : 90))
-        }
-      }
-      return notes
-    }
-  },
-  {
-    name: 'Random Seed',
-    description: 'Algorithmic weighted random within scale',
-    suggestedTempo: 138,
-    recommendedScale: 'pentatonicMinor',
     complexity: 'complex',
-    generate: ({ stepsPerOctave, octaves }) => {
+    generate: ({ stepsPerOctave }) => {
+      const third = 2
+      const fifth = 4
       const notes: Note[] = []
-      const totalPitches = stepsPerOctave * octaves
-      // Seeded random for reproducibility
-      let seed = 42
-      const random = () => {
-        seed = (seed * 1103515245 + 12345) % 2147483648
-        return seed / 2147483648
-      }
 
-      let lastPitch = Math.floor(totalPitches / 2)
-      for (let i = 0; i < 256; i++) {
-        // Bias towards staying close to last pitch
-        const jump = Math.floor(random() * 5) - 2
-        let pitch = lastPitch + jump
-        pitch = Math.max(0, Math.min(totalPitches - 1, pitch))
+      // Pattern evolves every 4 bars
+      const patterns = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],           // Just root
+        [0, 0, third, 0, 0, 0, third, 0, 0, 0, third, 0, 0, third, 0, 0], // Add thirds
+        [0, third, fifth, 0, 0, third, fifth, 0, 0, third, fifth, 0, third, fifth, 0, 0], // Add fifths
+        [0, third, fifth, stepsPerOctave, 0, third, fifth, stepsPerOctave, 0, third, fifth, stepsPerOctave, third, fifth, stepsPerOctave, 0] // Full arp
+      ]
 
-        // Skip some steps for breathing room
-        if (random() > 0.15) {
-          notes.push(createNote(i, pitch, 70 + Math.floor(random() * 40)))
-          lastPitch = pitch
+      for (let bar = 0; bar < 16; bar++) {
+        const patternIndex = Math.floor(bar / 4)
+        const pattern = patterns[patternIndex]
+        for (let i = 0; i < 16; i++) {
+          notes.push(n(bar * 16 + i, pattern[i], i % 4 === 0 ? 110 : 85, 1, i === 0))
         }
       }
       return notes
     }
   },
   {
-    name: 'Minimalist',
-    description: 'Sparse pattern with lots of space',
-    suggestedTempo: 132,
-    recommendedScale: 'major',
-    complexity: 'simple',
+    name: 'Rolling Pendulum',
+    description: 'Swinging pendulum-like pattern',
+    suggestedTempo: 140,
+    recommendedScale: 'minor',
+    complexity: 'medium',
     generate: ({ stepsPerOctave }) => {
+      const fifth = 4
+      // Up and down wave
+      const pattern = [0, 2, fifth, stepsPerOctave, stepsPerOctave, fifth, 2, 0,
+                       0, 2, fifth, stepsPerOctave, stepsPerOctave, fifth, 2, 0]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 8 === 0 ? 110 : i % 4 === 0 ? 100 : 85, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Stutter',
+    description: 'Stuttering 16th note pattern',
+    suggestedTempo: 142,
+    recommendedScale: 'minor',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      // Stutter effect with repeated notes
+      const pattern = [0, 0, 0, stepsPerOctave, 0, 0, 0, stepsPerOctave,
+                       0, 0, stepsPerOctave, stepsPerOctave, 0, stepsPerOctave, 0, stepsPerOctave]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 115 : pitch === stepsPerOctave ? 100 : 80, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Tech',
+    description: 'Tech-trance style rolling riff',
+    suggestedTempo: 145,
+    recommendedScale: 'phrygian',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      // Driving tech pattern
+      const pattern = [0, 0, 1, 0, 0, 1, stepsPerOctave, 0,
+                       0, 1, 0, stepsPerOctave, 0, 1, 0, stepsPerOctave]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, i % 4 === 0 ? 120 : pitch === stepsPerOctave ? 105 : 85, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
+    }
+  },
+  {
+    name: 'Rolling Uplifter',
+    description: 'Gradually rising rolling pattern',
+    suggestedTempo: 140,
+    recommendedScale: 'major',
+    complexity: 'complex',
+    generate: () => {
       const notes: Note[] = []
-      const hitPattern = [0, 6, 10, 12] // Sparse hits within each bar
+      const basePattern = [0, 2, 4, 5]
 
       for (let bar = 0; bar < 16; bar++) {
-        const variation = bar % 4
-        for (const hit of hitPattern) {
-          // Skip some hits based on bar
-          if (bar % 2 === 1 && hit === 6) continue
-
-          const step = bar * 16 + hit
-          const pitch = (variation * 2) % stepsPerOctave
-          notes.push(createNote(step, pitch, hit === 0 ? 100 : 85, 2))
+        const rise = Math.floor(bar / 4) // Rise every 4 bars
+        for (let i = 0; i < 16; i++) {
+          const pitch = basePattern[i % 4] + rise
+          notes.push(n(bar * 16 + i, pitch, i % 4 === 0 ? 110 : 85, 1, i === 0))
         }
       }
       return notes
+    }
+  },
+  {
+    name: 'Rolling Bounce',
+    description: 'Bouncy triplet-feel rolling',
+    suggestedTempo: 138,
+    recommendedScale: 'minor',
+    complexity: 'medium',
+    generate: ({ stepsPerOctave }) => {
+      const fifth = 4
+      // Bouncy pattern - accents create triplet feel
+      const pattern = [0, fifth, 0, 0, fifth, stepsPerOctave, 0, fifth,
+                       0, 0, fifth, 0, stepsPerOctave, fifth, 0, 0]
+      const accents = [0, 3, 6, 9, 12, 15]
+      const bar: Note[] = pattern.map((pitch, i) =>
+        n(i, pitch, accents.includes(i) ? 115 : 80, 1, i === 0)
+      )
+      return repeatBars(bar, 16)
     }
   }
 ]

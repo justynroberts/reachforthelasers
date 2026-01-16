@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import type { Note, Pattern, ScaleType, ChordMarker } from '../types'
 import { DEFAULT_TEMPO, DEFAULT_VELOCITY, DEFAULT_NOTE_LENGTH, TOTAL_STEPS, STEPS_PER_BAR } from '../types'
 import { SCALES, midiToNearestScaleDegree } from '../scales'
 
 const DEFAULT_ROOT_NOTE = 45 // A2 - lower for more range
+const MAX_HISTORY = 50
 
 export function usePattern() {
   const [notes, setNotesState] = useState<Note[]>([])
@@ -19,6 +20,40 @@ export function usePattern() {
   // Clipboard
   const clipboardRef = useRef<Note[]>([])
 
+  // Undo/redo history
+  const historyRef = useRef<Note[][]>([[]])
+  const historyIndexRef = useRef(0)
+
+  // Push state to history (call this before making changes)
+  const pushHistory = useCallback((currentNotes: Note[]) => {
+    const history = historyRef.current
+    const index = historyIndexRef.current
+
+    // Remove any future states if we're not at the end
+    if (index < history.length - 1) {
+      history.splice(index + 1)
+    }
+
+    // Add new state
+    history.push([...currentNotes])
+
+    // Limit history size
+    if (history.length > MAX_HISTORY) {
+      history.shift()
+    } else {
+      historyIndexRef.current = history.length - 1
+    }
+  }, [])
+
+  // Set notes with history tracking
+  const setNotesWithHistory = useCallback((newNotes: Note[] | ((prev: Note[]) => Note[])) => {
+    setNotesState(prev => {
+      const nextNotes = typeof newNotes === 'function' ? newNotes(prev) : newNotes
+      pushHistory(prev)
+      return nextNotes
+    })
+  }, [pushHistory])
+
   const pattern: Pattern = {
     notes,
     scale,
@@ -27,11 +62,37 @@ export function usePattern() {
   }
 
   const setNotes = useCallback((newNotes: Note[]) => {
-    setNotesState(newNotes)
+    setNotesWithHistory(newNotes)
+  }, [setNotesWithHistory])
+
+  // Undo - go back in history
+  const undo = useCallback(() => {
+    const history = historyRef.current
+    const index = historyIndexRef.current
+
+    if (index > 0) {
+      historyIndexRef.current = index - 1
+      setNotesState([...history[index - 1]])
+    }
   }, [])
 
+  // Redo - go forward in history
+  const redo = useCallback(() => {
+    const history = historyRef.current
+    const index = historyIndexRef.current
+
+    if (index < history.length - 1) {
+      historyIndexRef.current = index + 1
+      setNotesState([...history[index + 1]])
+    }
+  }, [])
+
+  // Check if undo/redo are available
+  const canUndo = useMemo(() => historyIndexRef.current > 0, [notes])
+  const canRedo = useMemo(() => historyIndexRef.current < historyRef.current.length - 1, [notes])
+
   const toggleNote = useCallback((step: number, pitch: number) => {
-    setNotesState(prev => {
+    setNotesWithHistory(prev => {
       const existingIndex = prev.findIndex(
         n => n.step === step && n.pitch === pitch
       )
@@ -47,12 +108,12 @@ export function usePattern() {
         }]
       }
     })
-  }, [])
+  }, [setNotesWithHistory])
 
   const clearPattern = useCallback(() => {
-    setNotesState([])
+    setNotesWithHistory([])
     setChords([])
-  }, [])
+  }, [setNotesWithHistory])
 
   const addChord = useCallback((chord: ChordMarker) => {
     setChords(prev => {
@@ -71,14 +132,14 @@ export function usePattern() {
     rootNote: number
     tempo: number
   }) => {
-    setNotesState(p.notes)
+    setNotesWithHistory(p.notes)
     setScaleState(p.scale)
     setRootNote(p.rootNote)
     setTempo(p.tempo)
-  }, [])
+  }, [setNotesWithHistory, setRootNote, setTempo])
 
   const setScale = useCallback((newScale: ScaleType) => {
-    setNotesState(prev => {
+    setNotesWithHistory(prev => {
       const oldScaleData = SCALES[scale]
       const newScaleData = SCALES[newScale]
 
@@ -92,7 +153,7 @@ export function usePattern() {
       })
     })
     setScaleState(newScale)
-  }, [scale, rootNote])
+  }, [scale, rootNote, setNotesWithHistory])
 
   // Get selection range in steps
   const getSelectionSteps = useCallback(() => {
@@ -120,8 +181,8 @@ export function usePattern() {
       ...n,
       step: n.step - startStep
     }))
-    setNotesState(prev => prev.filter(n => n.step < startStep || n.step >= endStep))
-  }, [notes, getSelectionSteps])
+    setNotesWithHistory(prev => prev.filter(n => n.step < startStep || n.step >= endStep))
+  }, [notes, getSelectionSteps, setNotesWithHistory])
 
   // Paste clipboard at selection start
   const pasteAtSelection = useCallback(() => {
@@ -132,18 +193,19 @@ export function usePattern() {
       step: n.step + startStep
     })).filter(n => n.step < TOTAL_STEPS)
 
-    setNotesState(prev => {
+    setNotesWithHistory(prev => {
       // Remove existing notes in paste range
       const pasteLength = Math.max(...clipboardRef.current.map(n => n.step)) + 1
       const filtered = prev.filter(n => n.step < startStep || n.step >= startStep + pasteLength)
       return [...filtered, ...pastedNotes]
     })
-  }, [getSelectionSteps])
+  }, [getSelectionSteps, setNotesWithHistory])
 
-  // Duplicate selection (copy and paste right after)
+  // Duplicate selection (copy and paste right after, extending the loop)
   const duplicateSelection = useCallback(() => {
     const { startStep, endStep } = getSelectionSteps()
     const selectionLength = endStep - startStep
+    const selectionBars = selectionEnd - selectionStart
     const selectedNotes = notes.filter(n => n.step >= startStep && n.step < endStep)
 
     // Paste after selection
@@ -152,12 +214,12 @@ export function usePattern() {
       step: n.step + selectionLength
     })).filter(n => n.step < TOTAL_STEPS)
 
-    setNotesState(prev => [...prev, ...duplicatedNotes])
+    setNotesWithHistory(prev => [...prev, ...duplicatedNotes])
 
-    // Move selection to duplicated area
-    setSelectionStart(selectionEnd)
-    setSelectionEnd(Math.min(selectionEnd + (selectionEnd - selectionStart), 16))
-  }, [notes, getSelectionSteps, selectionStart, selectionEnd])
+    // Extend selection to include duplicated area
+    const newEnd = Math.min(selectionEnd + selectionBars, 16)
+    setSelectionEnd(newEnd)
+  }, [notes, getSelectionSteps, selectionStart, selectionEnd, setNotesWithHistory])
 
   // Loop selection (repeat to fill pattern)
   const loopSelection = useCallback(() => {
@@ -183,49 +245,44 @@ export function usePattern() {
       currentOffset += selectionLength
     }
 
-    setNotesState(newNotes)
-  }, [notes, getSelectionSteps])
+    setNotesWithHistory(newNotes)
+  }, [notes, getSelectionSteps, setNotesWithHistory])
 
   // Clear selection
   const clearSelection = useCallback(() => {
     const { startStep, endStep } = getSelectionSteps()
-    setNotesState(prev => prev.filter(n => n.step < startStep || n.step >= endStep))
-  }, [getSelectionSteps])
+    setNotesWithHistory(prev => prev.filter(n => n.step < startStep || n.step >= endStep))
+  }, [getSelectionSteps, setNotesWithHistory])
 
-  // Add octave down for lowest note at each step
+  // Add octave down for the absolute lowest pitch notes in selection
   const addOctaveDown = useCallback(() => {
     const { startStep, endStep } = getSelectionSteps()
     const scaleData = SCALES[scale]
     const notesPerOctave = scaleData.intervals.length
 
-    // Group notes by step
-    const notesByStep = new Map<number, Note[]>()
-    notes.forEach(n => {
-      if (n.step >= startStep && n.step < endStep) {
-        const existing = notesByStep.get(n.step) || []
-        existing.push(n)
-        notesByStep.set(n.step, existing)
-      }
-    })
+    // Get all notes in selection
+    const selectionNotes = notes.filter(n => n.step >= startStep && n.step < endStep)
+    if (selectionNotes.length === 0) return
+
+    // Find the absolute lowest pitch in the selection
+    const lowestPitch = Math.min(...selectionNotes.map(n => n.pitch))
+
+    // Get all notes at the lowest pitch
+    const lowestNotes = selectionNotes.filter(n => n.pitch === lowestPitch)
 
     const newNotes: Note[] = []
-    notesByStep.forEach((stepNotes) => {
-      // Find lowest pitch note at this step
-      const lowestNote = stepNotes.reduce((lowest, n) =>
-        n.pitch < lowest.pitch ? n : lowest
-      , stepNotes[0])
-
+    lowestNotes.forEach(note => {
       // Calculate pitch one octave down
-      const newPitch = lowestNote.pitch - notesPerOctave
+      const newPitch = note.pitch - notesPerOctave
 
       // Only add if within valid range and doesn't already exist
       if (newPitch >= 0) {
         const alreadyExists = notes.some(n =>
-          n.step === lowestNote.step && n.pitch === newPitch
+          n.step === note.step && n.pitch === newPitch
         )
         if (!alreadyExists) {
           newNotes.push({
-            ...lowestNote,
+            ...note,
             pitch: newPitch
           })
         }
@@ -233,9 +290,79 @@ export function usePattern() {
     })
 
     if (newNotes.length > 0) {
-      setNotesState(prev => [...prev, ...newNotes])
+      setNotesWithHistory(prev => [...prev, ...newNotes])
     }
-  }, [notes, scale, getSelectionSteps])
+  }, [notes, scale, getSelectionSteps, setNotesWithHistory])
+
+  // Nudge pattern left (rotate) within selection
+  const nudgeLeft = useCallback(() => {
+    const { startStep, endStep } = getSelectionSteps()
+    const selectionLength = endStep - startStep
+    if (selectionLength <= 0) return
+
+    setNotesWithHistory(prev => prev.map(n => {
+      if (n.step >= startStep && n.step < endStep) {
+        // Shift left by 1, wrap around within selection
+        let newStep = n.step - 1
+        if (newStep < startStep) {
+          newStep = endStep - 1
+        }
+        return { ...n, step: newStep }
+      }
+      return n
+    }))
+  }, [getSelectionSteps, setNotesWithHistory])
+
+  // Nudge pattern right (rotate) within selection
+  const nudgeRight = useCallback(() => {
+    const { startStep, endStep } = getSelectionSteps()
+    const selectionLength = endStep - startStep
+    if (selectionLength <= 0) return
+
+    setNotesWithHistory(prev => prev.map(n => {
+      if (n.step >= startStep && n.step < endStep) {
+        // Shift right by 1, wrap around within selection
+        let newStep = n.step + 1
+        if (newStep >= endStep) {
+          newStep = startStep
+        }
+        return { ...n, step: newStep }
+      }
+      return n
+    }))
+  }, [getSelectionSteps, setNotesWithHistory])
+
+  // Transpose pattern up by 1 scale degree within selection
+  const transposeUp = useCallback(() => {
+    const { startStep, endStep } = getSelectionSteps()
+    const scaleData = SCALES[scale]
+    const maxPitch = scaleData.intervals.length * 4 - 1 // 4 octaves
+
+    setNotesWithHistory(prev => prev.map(n => {
+      if (n.step >= startStep && n.step < endStep) {
+        const newPitch = n.pitch + 1
+        if (newPitch <= maxPitch) {
+          return { ...n, pitch: newPitch }
+        }
+      }
+      return n
+    }))
+  }, [scale, getSelectionSteps, setNotesWithHistory])
+
+  // Transpose pattern down by 1 scale degree within selection
+  const transposeDown = useCallback(() => {
+    const { startStep, endStep } = getSelectionSteps()
+
+    setNotesWithHistory(prev => prev.map(n => {
+      if (n.step >= startStep && n.step < endStep) {
+        const newPitch = n.pitch - 1
+        if (newPitch >= 0) {
+          return { ...n, pitch: newPitch }
+        }
+      }
+      return n
+    }))
+  }, [getSelectionSteps, setNotesWithHistory])
 
   return {
     pattern,
@@ -265,6 +392,15 @@ export function usePattern() {
     duplicateSelection,
     loopSelection,
     clearSelection,
-    addOctaveDown
+    addOctaveDown,
+    nudgeLeft,
+    nudgeRight,
+    transposeUp,
+    transposeDown,
+    // Undo/redo
+    undo,
+    redo,
+    canUndo,
+    canRedo
   }
 }
