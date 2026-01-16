@@ -52,21 +52,32 @@ export function Transport({
 
   return (
     <div className="flex items-center gap-4">
-      {/* Play/Stop */}
+      {/* Play/Stop - Fairlight style */}
       <button
         onClick={isPlaying ? onStop : onPlay}
-        {...tip(isPlaying ? 'Stop playback' : 'Start playback')}
-        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg ${
+        {...tip(isPlaying ? 'Stop playback (F1)' : 'Start playback (F1)')}
+        className={`flex items-center gap-2 px-4 py-2 rounded border-2 transition-all font-mono text-sm ${
           isPlaying
-            ? 'bg-red-500 hover:bg-red-600 hover:scale-105 glow-rainbow'
-            : 'bg-note-active hover:opacity-90 hover:scale-105'
+            ? 'bg-grid-bg border-red-500 text-red-500 hover:bg-red-500/10'
+            : 'bg-grid-bg border-note-active text-note-active hover:bg-note-active/10'
         }`}
+        style={{
+          boxShadow: isPlaying
+            ? '0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.1)'
+            : '0 0 10px rgba(51, 255, 51, 0.5), inset 0 0 20px rgba(51, 255, 51, 0.1)'
+        }}
         aria-label={isPlaying ? 'Stop' : 'Play'}
       >
         {isPlaying ? (
-          <Square className="w-5 h-5 text-white" fill="white" />
+          <>
+            <Square className="w-4 h-4" fill="currentColor" />
+            <span>STOP</span>
+          </>
         ) : (
-          <Play className="w-5 h-5 text-grid-bg ml-0.5" fill="currentColor" />
+          <>
+            <Play className="w-4 h-4" fill="currentColor" />
+            <span>PLAY</span>
+          </>
         )}
       </button>
 

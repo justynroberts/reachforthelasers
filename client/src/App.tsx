@@ -9,12 +9,12 @@ import { EffectsPanel } from './components/Effects/EffectsPanel'
 import { EditToolbar } from './components/EditToolbar/EditToolbar'
 import { Visualizer } from './components/Visualizer/Visualizer'
 import { ProductTour } from './components/Tour/ProductTour'
+import { BootSequence } from './components/Boot/BootSequence'
 import { AboutModal } from './components/About/AboutModal'
 import { TooltipProvider, TooltipBar, Tooltipped } from './components/Tooltip/TooltipBar'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { usePattern } from './hooks/usePattern'
-import { useTheme } from './hooks/useTheme'
-import { Music, Library, Sun, Moon, Trash2, Download, Zap, HelpCircle, Info, SlidersHorizontal, ChevronRight } from 'lucide-react'
+import { Music, Library, Trash2, Download, Zap, HelpCircle, Info, SlidersHorizontal, ChevronRight } from 'lucide-react'
 import type { ScaleType, Note } from './types'
 import { STEPS_PER_BAR } from './types'
 import { SCALES } from './scales'
@@ -27,9 +27,9 @@ export default function App() {
   const [showTour, setShowTour] = useState(true)
   const [showAbout, setShowAbout] = useState(false)
   const [showEffects, setShowEffects] = useState(false)
+  const [booted, setBooted] = useState(() => sessionStorage.getItem('reach-for-lasers-booted') === 'true')
   const [centerTrigger, setCenterTrigger] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const { theme, toggleTheme } = useTheme()
 
   const {
     pattern,
@@ -184,12 +184,16 @@ export default function App() {
       setReverbMix(s.reverbMix)
     }
 
-    // Apply loop settings if present
-    if (catalogPattern.loopStart !== undefined) {
+    // Apply loop settings - use saved values or auto-detect from pattern length
+    if (catalogPattern.loopStart !== undefined && catalogPattern.loopEnd !== undefined) {
       setSelectionStart(catalogPattern.loopStart)
-    }
-    if (catalogPattern.loopEnd !== undefined) {
       setSelectionEnd(catalogPattern.loopEnd)
+    } else {
+      // Auto-detect pattern length and set loop accordingly
+      const lastStep = Math.max(...catalogPattern.notes.map(note => note.step + note.length))
+      const patternBars = Math.ceil(lastStep / STEPS_PER_BAR)
+      setSelectionStart(0)
+      setSelectionEnd(Math.max(1, patternBars)) // At least 1 bar
     }
 
     setActiveTab('editor')
@@ -198,6 +202,11 @@ export default function App() {
   }, [loadPattern, setSynthType, setFilterEnabled, setFilterType, setFilterFreq, setFilterQ,
       setDelayEnabled, setDelayTime, setDelayFeedback, setDelayMix,
       setReverbEnabled, setReverbDecay, setReverbMix, setSelectionStart, setSelectionEnd])
+
+  // Show boot sequence on first load
+  if (!booted) {
+    return <BootSequence onComplete={() => setBooted(true)} />
+  }
 
   return (
     <TooltipProvider>
@@ -209,11 +218,13 @@ export default function App() {
       <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-grid-line bg-grid-bg/80 backdrop-blur-sm">
         <Visualizer isPlaying={isPlaying} />
         <div className="relative z-10 flex items-center gap-3">
-          <h1 className="text-4xl font-bold text-note-active tracking-tight title-glow">
+          <h1 className="text-4xl font-bold text-note-active tracking-tight title-glow title-font">
             Reach for the Lasers
           </h1>
+          <span className="text-xs text-text-muted self-end mb-1">by Fintonlabs</span>
         </div>
         <nav className="relative z-10 flex items-center gap-3">
+          {/* Fairlight-style page tabs */}
           <div className="flex gap-1 bg-grid-line p-1 rounded-lg">
             <Tooltipped tip="Create and edit patterns">
               <button
@@ -224,8 +235,9 @@ export default function App() {
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
+                <span className="text-xs opacity-60">PAGE 1:</span>
                 <Music className="w-4 h-4" />
-                Create
+                EDIT
               </button>
             </Tooltipped>
             <Tooltipped tip="Browse preset and saved patterns">
@@ -237,25 +249,13 @@ export default function App() {
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
+                <span className="text-xs opacity-60">PAGE 2:</span>
                 <Library className="w-4 h-4" />
-                Browse
+                BROWSE
               </button>
             </Tooltipped>
           </div>
-          <Tooltipped tip={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-lg bg-grid-line hover:bg-grid-bar transition-colors"
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-yellow-400" />
-              ) : (
-                <Moon className="w-5 h-5 text-blue-400" />
-              )}
-            </button>
-          </Tooltipped>
-          <Tooltipped tip="Show product tour">
+                    <Tooltipped tip="Show product tour">
             <button
               onClick={() => {
                 localStorage.removeItem('reach-for-lasers-tour-complete')
@@ -417,7 +417,7 @@ export default function App() {
             </div>
 
             {/* Chord Track + Grid */}
-            <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+            <div ref={scrollContainerRef} className="flex-1 overflow-auto grid-crosshair">
               <ChordTrack
                 chords={chords}
                 onAddChord={addChord}
@@ -435,7 +435,7 @@ export default function App() {
                 onNotesChange={setNotes}
                 centerTrigger={centerTrigger}
                 scrollContainerRef={scrollContainerRef}
-                theme={theme}
+                theme="light"
                 loopStartStep={loopStartStep}
                 loopEndStep={loopEndStep}
                 onLoopStartChange={setSelectionStart}
@@ -484,6 +484,59 @@ export default function App() {
       {showTour && (
         <ProductTour onComplete={() => setShowTour(false)} />
       )}
+
+      {/* Fairlight-style Status Bar */}
+      <div className="relative z-10 flex items-center justify-between px-4 py-2 border-t border-grid-line bg-grid-bg/90 text-xs">
+        <div className="flex items-center gap-6 text-text-muted">
+          <span>MEMORY: {pattern.notes.length.toString().padStart(3, '0')} NOTES</span>
+          <span>|</span>
+          <span>VOICE: {synthType.toUpperCase().replace(/-/g, ' ')}</span>
+          <span>|</span>
+          <span>SCALE: {SCALES[scale].name.toUpperCase()}</span>
+        </div>
+        <div className="flex items-center gap-2 text-note-active font-mono">
+          <span>BAR {String(Math.floor(currentStep / STEPS_PER_BAR) + 1).padStart(2, '0')}</span>
+          <span>:</span>
+          <span>STEP {String((currentStep % STEPS_PER_BAR) + 1).padStart(2, '0')}</span>
+          <span className="ml-4 text-text-muted">| {tempo} BPM</span>
+        </div>
+      </div>
+
+      {/* Fairlight-style Function Key Bar */}
+      <div className="relative z-10 flex items-center justify-center gap-2 px-4 py-2 border-t border-grid-line bg-grid-bg text-xs">
+        <button onClick={isPlaying ? stop : play} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F1</span>
+          <span className="text-note-active">{isPlaying ? 'STOP' : 'PLAY'}</span>
+        </button>
+        <button onClick={copySelection} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F2</span>
+          <span className="text-note-active">COPY</span>
+        </button>
+        <button onClick={pasteAtSelection} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F3</span>
+          <span className="text-note-active">PASTE</span>
+        </button>
+        <button onClick={clearSelection} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F4</span>
+          <span className="text-note-active">CLEAR</span>
+        </button>
+        <button onClick={undo} disabled={!canUndo} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color disabled:opacity-40">
+          <span className="text-text-muted">F5</span>
+          <span className="text-note-active">UNDO</span>
+        </button>
+        <button onClick={redo} disabled={!canRedo} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color disabled:opacity-40">
+          <span className="text-text-muted">F6</span>
+          <span className="text-note-active">REDO</span>
+        </button>
+        <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F7</span>
+          <span className="text-note-active">EXPORT</span>
+        </button>
+        <button onClick={() => setShowEffects(!showEffects)} className="flex items-center gap-1 px-3 py-1 bg-grid-line hover:bg-grid-bar rounded border border-border-color">
+          <span className="text-text-muted">F8</span>
+          <span className="text-note-active">FX</span>
+        </button>
+      </div>
 
       {/* Tooltip Bar */}
       <TooltipBar />
